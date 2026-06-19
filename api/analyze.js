@@ -123,10 +123,12 @@ function generateBets(homeStats, awayStats, odds, prediction) {
   const awayPred = prediction?.markets?.match_result?.prob_away;
 
   if (homePred != null) {
-    const homeFormScore = homeStats.win_pct;
-    const awayFormScore = awayStats.win_pct;
-    const homeAdj = Math.round((homePred * 100 * 0.6) + (homeFormScore * 0.4));
-    const awayAdj = Math.round((awayPred * 100 * 0.6) + (awayFormScore * 0.4));
+    // homePred es 0-1, homeStats.win_pct es 0-100 → normalizar a 0-1 antes de combinar
+    const homeFormPct = homeStats.win_pct / 100;
+    const awayFormPct = awayStats.win_pct / 100;
+    // Promedio ponderado: 60% modelo ML + 40% forma reciente → resultado en 0-100
+    const homeAdj = Math.round(((homePred * 0.6) + (homeFormPct * 0.4)) * 100);
+    const awayAdj = Math.round(((awayPred * 0.6) + (awayFormPct * 0.4)) * 100);
     const drawAdj = Math.round(drawPred * 100);
 
     const homeOdd = odds?.home;
@@ -139,7 +141,7 @@ function generateBets(homeStats, awayStats, odds, prediction) {
       confidence: homeAdj >= 55 ? 'ALTA' : homeAdj >= 40 ? 'MEDIA' : 'BAJA',
       odds: homeOdd || null,
       ev: homeOdd ? +((homeAdj/100) * homeOdd - 1).toFixed(3) : null,
-      reason: `Modelo ML: ${Math.round(homePred*100)}% + forma reciente: ${homeFormScore}% victorias`,
+      reason: `Modelo ML: ${Math.round(homePred*100)}% + forma reciente: ${homeStats.win_pct}% victorias`,
       recommend: homeAdj >= 50 && homeAdj > awayAdj + 10,
     });
 
@@ -159,7 +161,7 @@ function generateBets(homeStats, awayStats, odds, prediction) {
       confidence: awayAdj >= 55 ? 'ALTA' : awayAdj >= 40 ? 'MEDIA' : 'BAJA',
       odds: awayOdd || null,
       ev: awayOdd ? +((awayAdj/100) * awayOdd - 1).toFixed(3) : null,
-      reason: `Modelo ML: ${Math.round(awayPred*100)}% + forma reciente: ${awayFormScore}% victorias`,
+      reason: `Modelo ML: ${Math.round(awayPred*100)}% + forma reciente: ${awayStats.win_pct}% victorias`,
       recommend: awayAdj >= 50 && awayAdj > homeAdj + 10,
     });
   }

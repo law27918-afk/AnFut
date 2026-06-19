@@ -1,31 +1,39 @@
 import { bsd } from './_bsd.js';
 
+// Fecha local en Panamá (UTC-5) como YYYY-MM-DD
+function panamaDate(offsetDays = 0) {
+  const d = new Date();
+  d.setUTCHours(d.getUTCHours() - 5); // UTC-5
+  d.setUTCDate(d.getUTCDate() + offsetDays);
+  return d.toISOString().split('T')[0];
+}
+
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   try {
-    const now = new Date();
-    const tomorrow = new Date(now);
-    tomorrow.setDate(tomorrow.getDate() + 1);
+    const todayStr    = panamaDate(0);
+    const tomorrowStr = panamaDate(1);
 
-    const dateFrom = now.toISOString().split('T')[0]; // YYYY-MM-DD hoy
-    const dateTo = tomorrow.toISOString().split('T')[0] + 'T23:59:59Z'; // mañana fin
+    // Pide desde inicio de hoy hasta fin de mañana en UTC
+    const dateFrom = todayStr + 'T05:00:00Z';   // 00:00 Panamá = 05:00 UTC
+    const dateTo   = tomorrowStr + 'T04:59:59Z'; // 23:59 mañana Panamá = 04:59 UTC+1d
+    const dateToReal = panamaDate(2) + 'T04:59:59Z';
 
     const events = await bsd('/events/', {
       date_from: dateFrom,
-      date_to: dateTo,
-      limit: 100,
+      date_to:   dateToReal,
+      limit: 200,
     });
-
-    // Agrupa por fecha
-    const today = now.toISOString().split('T')[0];
-    const tomorrowStr = tomorrow.toISOString().split('T')[0];
 
     const grouped = { today: [], tomorrow: [] };
 
     (Array.isArray(events) ? events : []).forEach(e => {
-      const d = e.event_date?.split('T')[0];
-      if (d === today) grouped.today.push(e);
+      // Convierte event_date a fecha Panamá
+      const utc = new Date(e.event_date);
+      const panama = new Date(utc.getTime() - 5 * 60 * 60 * 1000);
+      const d = panama.toISOString().split('T')[0];
+      if (d === todayStr) grouped.today.push(e);
       else if (d === tomorrowStr) grouped.tomorrow.push(e);
     });
 
