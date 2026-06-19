@@ -15,5 +15,7 @@ export async function bsd(path, params = {}) {
     const text = await res.text();
     throw new Error(`BSD ${res.status}: ${text.slice(0, 200)}`);
   }
-  return res.json();
+  const data = await res.json();
+  // La API devuelve {count, results:[...]} o directamente el objeto
+  return data?.results !== undefined ? data.results : data;
 }
