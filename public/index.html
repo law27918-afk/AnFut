@@ -1,0 +1,538 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Scout — Análisis de Apuestas</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Space+Grotesk:wght@600;700&display=swap');
+:root{
+  --bg:#0b0d11;--s1:#13161c;--s2:#1a1e27;--s3:#20253000;
+  --bd:rgba(255,255,255,.07);--bds:rgba(255,255,255,.13);
+  --t:#dde1eb;--tm:#6b7491;--td:#3a3f55;
+  --green:#4ade80;--yellow:#fbbf24;--red:#f87171;--blue:#60a5fa;--purple:#a78bfa;--orange:#fb923c;
+  --r:10px;--rl:14px;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-size:14px;line-height:1.55;min-height:100vh}
+.shell{max-width:900px;margin:0 auto;padding:1.5rem 1rem 5rem}
+
+/* header */
+.hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:.5px solid var(--bd)}
+.hdr-left h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:-.02em}
+.hdr-left p{font-size:12px;color:var(--tm);margin-top:2px}
+.hdr-date{font-size:12px;color:var(--td);text-align:right}
+
+/* day section */
+.day-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--td);font-weight:600;margin-bottom:.625rem;display:flex;align-items:center;gap:8px}
+.day-label::after{content:'';flex:1;height:.5px;background:var(--bd)}
+.day-count{font-size:10px;color:var(--td);background:var(--s2);padding:2px 8px;border-radius:20px}
+
+/* event cards grid */
+.events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.625rem;margin-bottom:1.5rem}
+.event-card{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:.875rem 1rem;cursor:pointer;transition:border-color .15s,background .15s;position:relative}
+.event-card:hover{background:var(--s2);border-color:var(--bds)}
+.event-card.active{border-color:var(--green);background:rgba(74,222,128,.04)}
+.ec-time{font-size:11px;color:var(--td);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
+.ec-live{width:6px;height:6px;border-radius:50%;background:var(--red);animation:pulse 1.5s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.ec-teams{font-size:13px;font-weight:500;color:#fff;margin-bottom:3px}
+.ec-teams .vs{color:var(--td);font-weight:400;font-size:11px;margin:0 4px}
+.ec-league{font-size:11px;color:var(--purple)}
+.ec-odds{display:flex;gap:6px;margin-top:.625rem}
+.ec-odd{flex:1;background:var(--s2);border-radius:6px;padding:4px 0;text-align:center}
+.ec-odd .ol{font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.05em}
+.ec-odd .ov{font-size:13px;font-weight:600;color:var(--t)}
+
+/* loading */
+.loading-bar{display:flex;align-items:center;gap:10px;padding:2rem 0;color:var(--tm);font-size:13px}
+.spin{width:14px;height:14px;border:2px solid var(--bd);border-top-color:var(--green);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
+@keyframes spin{to{transform:rotate(360deg)}}
+.empty{color:var(--td);font-size:13px;padding:1rem 0;font-style:italic}
+.err-box{background:rgba(248,113,113,.07);border:.5px solid rgba(248,113,113,.2);border-radius:var(--r);padding:.875rem 1rem;color:var(--red);font-size:13px}
+
+/* analysis panel */
+#analysisPanel{margin-top:1.5rem;display:none}
+
+/* scoreboard */
+.scoreboard{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:1.25rem 1.5rem;margin-bottom:.875rem}
+.sb-inner{display:flex;align-items:center;justify-content:center;gap:1.5rem;margin:.5rem 0}
+.sb-team{flex:1;text-align:center}
+.sb-name{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#fff}
+.sb-sub{font-size:11px;color:var(--tm);margin-top:2px}
+.sb-score{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:700;color:#fff;letter-spacing:-.02em;text-align:center;min-width:80px}
+.sb-meta{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:.625rem}
+.pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
+.pill-live{background:rgba(248,113,113,.15);color:var(--red)}
+.pill-ns{background:rgba(96,165,250,.1);color:var(--blue)}
+.pill-fin{background:rgba(74,222,128,.1);color:var(--green)}
+.pill-neutral{background:var(--s2);color:var(--tm)}
+
+/* bets section */
+.bets-wrap{margin-bottom:.875rem}
+.bet-card{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:1rem 1.25rem;margin-bottom:.625rem;display:flex;align-items:center;gap:1rem}
+.bet-card.recommended{border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.04)}
+.bet-card.medium{border-color:rgba(251,191,36,.2)}
+.bet-left{flex:1}
+.bet-market{font-size:14px;font-weight:500;color:#fff;margin-bottom:3px}
+.bet-reason{font-size:12px;color:var(--tm);line-height:1.5}
+.bet-right{text-align:right;flex-shrink:0}
+.bet-prob{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;line-height:1}
+.bet-conf{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-top:3px}
+.bet-odds-row{font-size:11px;color:var(--td);margin-top:3px}
+.conf-alta{color:var(--green)}
+.conf-media{color:var(--yellow)}
+.conf-baja{color:var(--red)}
+.rec-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:20px;margin-left:6px;background:rgba(74,222,128,.15);color:var(--green)}
+
+/* two column */
+.g2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.875rem}
+@media(max-width:600px){.g2{grid-template-columns:1fr}}
+
+/* stat card */
+.stat-card{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:1rem 1.25rem}
+.sc-title{font-size:11px;color:var(--tm);font-weight:500;margin-bottom:.875rem}
+.sc-team{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:.75rem}
+
+/* form dots */
+.form-dots{display:flex;gap:4px;margin-bottom:.75rem}
+.dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
+.dot-W{background:rgba(74,222,128,.2);color:var(--green)}
+.dot-D{background:rgba(251,191,36,.15);color:var(--yellow)}
+.dot-L{background:rgba(248,113,113,.15);color:var(--red)}
+
+/* stat rows */
+.stat-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:.5px solid var(--bd);font-size:13px}
+.stat-row:last-child{border-bottom:none}
+.stat-row .sk{color:var(--tm)}
+.stat-row .sv{font-weight:500;color:var(--t)}
+
+/* prob bar */
+.prob-row{margin-bottom:6px}
+.prob-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--tm);margin-bottom:3px}
+.prob-track{height:5px;background:var(--s2);border-radius:99px;overflow:hidden}
+.prob-fill{height:100%;border-radius:99px}
+
+/* recent games */
+.recent-game{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:.5px solid var(--bd);font-size:12px}
+.recent-game:last-child{border-bottom:none}
+.rg-res{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
+.rg-opp{flex:1;color:var(--tm);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.rg-score{color:var(--t);font-weight:500;font-size:13px}
+.rg-date{color:var(--td);font-size:10px;min-width:50px;text-align:right}
+
+/* h2h */
+.h2h-stats{display:grid;grid-template-columns:1fr auto 1fr;gap:.5rem;text-align:center;margin-bottom:.75rem}
+.h2h-val{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700}
+.h2h-label{font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:.06em}
+.h2h-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
+
+/* section title */
+.section-title{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--td);font-weight:600;margin-bottom:.75rem}
+
+/* tabs */
+.tabs{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap}
+.tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:.5px solid transparent;color:var(--tm);transition:all .15s}
+.tab:hover{color:var(--t);background:var(--s2)}
+.tab.active{background:var(--s2);border-color:var(--bds);color:var(--t)}
+
+/* no data */
+.no-data{color:var(--td);font-size:13px;font-style:italic;padding:.5rem 0}
+
+/* weather strip */
+.weather-strip{display:flex;gap:1.5rem;flex-wrap:wrap;padding:.75rem 0}
+.wi .wl{font-size:10px;color:var(--td)}
+.wi .wv{font-size:14px;font-weight:500}
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="hdr">
+    <div class="hdr-left">
+      <h1>⚽ Scout</h1>
+      <p>Análisis de apuestas basado en datos reales</p>
+    </div>
+    <div class="hdr-date" id="hdrDate"></div>
+  </div>
+
+  <div id="eventsArea">
+    <div class="loading-bar"><div class="spin"></div> Cargando partidos de hoy y mañana…</div>
+  </div>
+
+  <div id="analysisPanel"></div>
+
+</div>
+
+<script>
+// ── utils ──────────────────────────────────────────────────────
+const $ = id => document.getElementById(id);
+
+function fmtTime(iso) {
+  return new Date(iso).toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit', timeZone:'America/Tegucigalpa' });
+}
+function fmtDate(iso) {
+  return new Date(iso).toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' });
+}
+function pct(v) { return v != null ? Math.round(v * 100) + '%' : '—'; }
+function probColor(p) {
+  return p >= 60 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)';
+}
+
+// ── header date ───────────────────────────────────────────────
+$('hdrDate').innerHTML = new Date().toLocaleDateString('es', {
+  weekday:'long', day:'numeric', month:'long', year:'numeric'
+});
+
+// ── load today's events ───────────────────────────────────────
+async function loadEvents() {
+  try {
+    const r = await fetch('/api/today');
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    renderEvents(data);
+  } catch(e) {
+    $('eventsArea').innerHTML = `<div class="err-box">❌ ${e.message}</div>`;
+  }
+}
+
+function renderEvents(data) {
+  const { today = [], tomorrow = [] } = data;
+  let html = '';
+
+  if (!today.length && !tomorrow.length) {
+    $('eventsArea').innerHTML = '<div class="empty">No hay partidos programados para hoy ni mañana.</div>';
+    return;
+  }
+
+  if (today.length) {
+    html += `<div class="day-label">Hoy <span class="day-count">${today.length}</span></div>`;
+    html += '<div class="events-grid">' + today.map(e => eventCard(e)).join('') + '</div>';
+  }
+  if (tomorrow.length) {
+    html += `<div class="day-label">Mañana <span class="day-count">${tomorrow.length}</span></div>`;
+    html += '<div class="events-grid">' + tomorrow.map(e => eventCard(e)).join('') + '</div>';
+  }
+
+  $('eventsArea').innerHTML = html;
+}
+
+function eventCard(e) {
+  const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(e.status);
+  const isFin  = e.status === 'finished';
+  const score  = isFin || isLive
+    ? `${e.home_score ?? 0}–${e.away_score ?? 0}`
+    : fmtTime(e.event_date);
+
+  return `
+    <div class="event-card" onclick="selectEvent(${e.id}, this)" data-id="${e.id}">
+      <div class="ec-time">
+        ${isLive ? '<div class="ec-live"></div> EN VIVO' : score}
+        ${e.round_name ? `<span style="margin-left:auto;color:var(--td);font-size:10px">${e.round_name}</span>` : ''}
+      </div>
+      <div class="ec-teams">${e.home_team} <span class="vs">vs</span> ${e.away_team}</div>
+      <div class="ec-league">${e.league_id ? '🏆' : ''} ${e.round_name || ''}</div>
+    </div>`;
+}
+
+// ── select event ──────────────────────────────────────────────
+let currentId = null;
+
+async function selectEvent(id, el) {
+  if (currentId === id) return;
+  currentId = id;
+
+  document.querySelectorAll('.event-card').forEach(c => c.classList.remove('active'));
+  if (el) el.classList.add('active');
+
+  const panel = $('analysisPanel');
+  panel.style.display = 'block';
+  panel.innerHTML = '<div class="loading-bar"><div class="spin"></div> Analizando partido y últimos 10 juegos de cada equipo…</div>';
+  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
+
+  try {
+    const r = await fetch(`/api/analyze?id=${id}`);
+    const data = await r.json();
+    if (data.error) throw new Error(data.error);
+    renderAnalysis(data);
+  } catch(e) {
+    panel.innerHTML = `<div class="err-box">❌ ${e.message}</div>`;
+  }
+}
+
+// ── render analysis ───────────────────────────────────────────
+function renderAnalysis(d) {
+  const { event: ev, homeStats, awayStats, odds, prediction, h2h, lineups, bets } = d;
+
+  const panel = $('analysisPanel');
+  panel.innerHTML = `
+    ${renderScoreboard(ev, odds)}
+    ${renderBets(bets, ev)}
+    <div class="g2">
+      ${renderTeamStats(homeStats, ev.home_team)}
+      ${renderTeamStats(awayStats, ev.away_team)}
+    </div>
+    ${renderH2H(h2h, ev)}
+    ${renderPrediction(prediction, ev)}
+    ${renderLineups(lineups, ev)}
+    ${renderWeather(ev)}
+  `;
+}
+
+// ── scoreboard ────────────────────────────────────────────────
+function renderScoreboard(ev, odds) {
+  const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(ev.status);
+  const isFin  = ev.status === 'finished';
+  const isNS   = ev.status === 'notstarted';
+
+  const statusClass = isLive ? 'pill-live' : isFin ? 'pill-fin' : 'pill-ns';
+  const statusLabel = { notstarted:'Por jugar', finished:'Finalizado', '1st_half':'1ª Parte',
+    '2nd_half':'2ª Parte', halftime:'Descanso', inprogress:'En Juego', postponed:'Aplazado' }[ev.status] || ev.status;
+
+  const scoreHTML = isNS
+    ? `<span style="font-size:18px;color:var(--td)">${fmtTime(ev.event_date)}</span>`
+    : `${ev.home_score ?? '–'}<span style="color:var(--td);font-size:24px;margin:0 4px">–</span>${ev.away_score ?? '–'}`;
+
+  const oddsHTML = (odds.home || odds.draw || odds.away) ? `
+    <div style="display:flex;gap:8px;justify-content:center;margin-top:.75rem">
+      ${odds.home ? `<div class="ec-odd"><div class="ol">1</div><div class="ov">${odds.home.toFixed(2)}</div></div>` : ''}
+      ${odds.draw ? `<div class="ec-odd"><div class="ol">X</div><div class="ov">${odds.draw.toFixed(2)}</div></div>` : ''}
+      ${odds.away ? `<div class="ec-odd"><div class="ol">2</div><div class="ov">${odds.away.toFixed(2)}</div></div>` : ''}
+    </div>` : '';
+
+  return `
+    <div class="scoreboard">
+      <div style="text-align:center;margin-bottom:.75rem">
+        <span class="pill ${statusClass}">${statusLabel}</span>
+        ${isLive && ev.current_minute ? `<span style="margin-left:8px;font-size:12px;color:var(--tm)">${ev.current_minute}'</span>` : ''}
+      </div>
+      <div class="sb-inner">
+        <div class="sb-team"><div class="sb-name">${ev.home_team}</div><div class="sb-sub">Local</div></div>
+        <div class="sb-score">${scoreHTML}</div>
+        <div class="sb-team"><div class="sb-name">${ev.away_team}</div><div class="sb-sub">Visitante</div></div>
+      </div>
+      <div style="text-align:center;font-size:12px;color:var(--tm)">${fmtDate(ev.event_date)}</div>
+      ${oddsHTML}
+    </div>`;
+}
+
+// ── bets ──────────────────────────────────────────────────────
+function renderBets(bets, ev) {
+  if (!bets || !bets.length) return '<div class="section-title" style="margin-bottom:.5rem">Apuestas recomendadas</div><div class="no-data">Sin datos suficientes para calcular probabilidades.</div>';
+
+  const cards = bets.map(b => {
+    const cls = b.recommend ? 'recommended' : b.confidence === 'MEDIA' ? 'medium' : '';
+    const confCls = `conf-${b.confidence.toLowerCase()}`;
+    const evHTML = b.ev != null
+      ? `EV: <span style="color:${b.ev > 0 ? 'var(--green)' : 'var(--red)'}">${b.ev > 0 ? '+' : ''}${b.ev}</span>`
+      : '';
+    return `
+      <div class="bet-card ${cls}">
+        <div class="bet-left">
+          <div class="bet-market">${b.market}${b.recommend ? '<span class="rec-badge">✓ Recomendada</span>' : ''}</div>
+          <div class="bet-reason">${b.reason}</div>
+          ${b.odds ? `<div class="bet-odds-row">Cuota: <b>${b.odds.toFixed(2)}</b> &nbsp; ${evHTML}</div>` : ''}
+        </div>
+        <div class="bet-right">
+          <div class="bet-prob" style="color:${probColor(b.prob)}">${b.prob}%</div>
+          <div class="bet-conf ${confCls}">${b.confidence}</div>
+        </div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div style="margin-bottom:.875rem">
+      <div class="section-title">Apuestas recomendadas — basado en últimos 10 partidos</div>
+      <div class="bets-wrap">${cards}</div>
+    </div>`;
+}
+
+// ── team stats ────────────────────────────────────────────────
+function renderTeamStats(stats, teamName) {
+  if (!stats) return `
+    <div class="stat-card">
+      <div class="sc-team">${teamName}</div>
+      <div class="no-data">Sin datos de partidos recientes.</div>
+    </div>`;
+
+  const formHTML = stats.form.map(r =>
+    `<div class="dot dot-${r}">${r}</div>`
+  ).join('');
+
+  const recentHTML = stats.recent.map(g => {
+    const res = g.gf > g.ga ? 'W' : g.gf < g.ga ? 'L' : 'D';
+    const cls = `dot-${res}`;
+    return `
+      <div class="recent-game">
+        <div class="rg-res ${cls}">${res}</div>
+        <div class="rg-opp">${g.home ? 'vs' : '@'} ${g.opponent}</div>
+        <div class="rg-score">${g.gf}–${g.ga}</div>
+        <div class="rg-date">${g.date}</div>
+      </div>`;
+  }).join('');
+
+  return `
+    <div class="stat-card">
+      <div class="sc-team">${teamName}</div>
+      <div class="sc-title">Forma (últimos ${stats.games} partidos)</div>
+      <div class="form-dots">${formHTML}</div>
+      <div class="stat-row"><span class="sk">Victorias</span><span class="sv" style="color:var(--green)">${stats.win_pct}%</span></div>
+      <div class="stat-row"><span class="sk">Empates</span><span class="sv" style="color:var(--yellow)">${stats.draw_pct}%</span></div>
+      <div class="stat-row"><span class="sk">Derrotas</span><span class="sv" style="color:var(--red)">${stats.loss_pct}%</span></div>
+      <div class="stat-row"><span class="sk">Goles/partido</span><span class="sv">${stats.avg_goals_for}</span></div>
+      <div class="stat-row"><span class="sk">Goles rec./partido</span><span class="sv">${stats.avg_goals_against}</span></div>
+      <div class="stat-row"><span class="sk">Total goles/partido</span><span class="sv">${stats.avg_total_goals}</span></div>
+      <div class="stat-row"><span class="sk">BTTS %</span><span class="sv">${stats.btts_pct}%</span></div>
+      <div class="stat-row"><span class="sk">Over 2.5 %</span><span class="sv">${stats.over25_pct}%</span></div>
+      <div class="stat-row"><span class="sk">Portería a 0 %</span><span class="sv">${stats.clean_sheet_pct}%</span></div>
+      <div style="margin-top:.875rem">
+        <div class="sc-title">Últimos partidos</div>
+        ${recentHTML}
+      </div>
+    </div>`;
+}
+
+// ── H2H ───────────────────────────────────────────────────────
+function renderH2H(h2h, ev) {
+  if (!h2h || Object.values(h2h).every(v => v === null)) return '';
+
+  const hW = h2h.home_wins ?? 0;
+  const aW = h2h.away_wins ?? 0;
+  const dr = h2h.draws ?? 0;
+  const total = hW + aW + dr || 1;
+
+  return `
+    <div class="stat-card" style="margin-bottom:.875rem">
+      <div class="section-title">Historial H2H</div>
+      <div class="h2h-stats">
+        <div>
+          <div class="h2h-val" style="color:var(--blue)">${hW}</div>
+          <div class="h2h-label">${ev.home_team}</div>
+        </div>
+        <div class="h2h-mid">
+          <div class="h2h-val" style="color:var(--yellow)">${dr}</div>
+          <div class="h2h-label">Empates</div>
+        </div>
+        <div>
+          <div class="h2h-val" style="color:var(--purple)">${aW}</div>
+          <div class="h2h-label">${ev.away_team}</div>
+        </div>
+      </div>
+      <div class="prob-row">
+        <div class="prob-track" style="height:6px">
+          <div class="prob-fill" style="width:${Math.round(hW/total*100)}%;background:var(--blue)"></div>
+          <div class="prob-fill" style="width:${Math.round(dr/total*100)}%;background:var(--yellow)"></div>
+          <div class="prob-fill" style="width:${Math.round(aW/total*100)}%;background:var(--purple)"></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem">
+        ${h2h.avg_goals != null ? `<div><span style="color:var(--td);font-size:11px">Goles/partido: </span><span style="font-weight:500">${h2h.avg_goals?.toFixed(1)??'—'}</span></div>` : ''}
+        ${h2h.btts_pct != null ? `<div><span style="color:var(--td);font-size:11px">BTTS: </span><span style="font-weight:500">${Math.round(h2h.btts_pct*100)}%</span></div>` : ''}
+        ${h2h.over_25_pct != null ? `<div><span style="color:var(--td);font-size:11px">Over 2.5: </span><span style="font-weight:500">${Math.round(h2h.over_25_pct*100)}%</span></div>` : ''}
+        ${h2h.total_matches != null ? `<div><span style="color:var(--td);font-size:11px">Total partidos: </span><span style="font-weight:500">${h2h.total_matches}</span></div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ── prediction ────────────────────────────────────────────────
+function renderPrediction(pred, ev) {
+  if (!pred) return '';
+
+  const mr = pred.markets?.match_result || {};
+  const eg = pred.markets?.expected_goals || {};
+  const ou = pred.markets?.over_under || {};
+  const bt = pred.markets?.btts || {};
+  const sc = pred.markets?.score || {};
+  const rec = pred.recommendations || {};
+
+  const hP = Math.round((mr.prob_home || 0) * 100);
+  const dP = Math.round((mr.prob_draw || 0) * 100);
+  const aP = Math.round((mr.prob_away || 0) * 100);
+
+  return `
+    <div class="stat-card" style="margin-bottom:.875rem">
+      <div class="section-title">Predicción ML (CatBoost)</div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.875rem">
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--tm);margin-bottom:4px">${ev.home_team}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--blue)">${hP}%</div>
+          <div class="prob-track" style="margin-top:4px"><div class="prob-fill" style="width:${hP}%;background:var(--blue)"></div></div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--tm);margin-bottom:4px">Empate</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--yellow)">${dP}%</div>
+          <div class="prob-track" style="margin-top:4px"><div class="prob-fill" style="width:${dP}%;background:var(--yellow)"></div></div>
+        </div>
+        <div style="text-align:center">
+          <div style="font-size:10px;color:var(--tm);margin-bottom:4px">${ev.away_team}</div>
+          <div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--purple)">${aP}%</div>
+          <div class="prob-track" style="margin-top:4px"><div class="prob-fill" style="width:${aP}%;background:var(--purple)"></div></div>
+        </div>
+      </div>
+      <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
+        ${eg.home != null ? `<div><span style="color:var(--td);font-size:11px">xG Local: </span><span style="font-weight:500">${eg.home?.toFixed(2)}</span></div>` : ''}
+        ${eg.away != null ? `<div><span style="color:var(--td);font-size:11px">xG Visitante: </span><span style="font-weight:500">${eg.away?.toFixed(2)}</span></div>` : ''}
+        ${sc.most_likely ? `<div><span style="color:var(--td);font-size:11px">Marcador probable: </span><span style="font-weight:500">${sc.most_likely}</span></div>` : ''}
+        ${ou.prob_over_25 != null ? `<div><span style="color:var(--td);font-size:11px">Over 2.5: </span><span style="font-weight:500">${Math.round(ou.prob_over_25*100)}%</span></div>` : ''}
+        ${bt.prob_yes != null ? `<div><span style="color:var(--td);font-size:11px">BTTS: </span><span style="font-weight:500">${Math.round(bt.prob_yes*100)}%</span></div>` : ''}
+        ${pred.model?.confidence != null ? `<div><span style="color:var(--td);font-size:11px">Confianza modelo: </span><span style="font-weight:500">${Math.round(pred.model.confidence*100)}%</span></div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ── lineups ───────────────────────────────────────────────────
+function renderLineups(lin, ev) {
+  if (!lin || lin.lineup_status === 'unavailable' || !lin.lineups) return '';
+
+  const home = lin.lineups?.home;
+  const away = lin.lineups?.away;
+  const statusLabel = { confirmed:'✅ Confirmada', predicted:'🤖 Predicha IA' }[lin.lineup_status] || lin.lineup_status;
+
+  function playerList(side) {
+    const players = side?.players || [];
+    if (!players.length) return '<div class="no-data">Sin datos</div>';
+    return players.map(p => `
+      <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:.5px solid var(--bd)">
+        <span style="font-size:11px;color:var(--td);min-width:20px">${p.jersey_number ?? ''}</span>
+        <span style="font-size:13px;flex:1">${p.name}</span>
+        <span style="font-size:10px;color:var(--tm);background:var(--s2);padding:2px 7px;border-radius:20px">${p.position}</span>
+      </div>`).join('');
+  }
+
+  return `
+    <div class="g2">
+      <div class="stat-card">
+        <div class="section-title">${ev.home_team} — ${statusLabel}</div>
+        ${home?.formation ? `<div style="font-size:12px;color:var(--tm);margin-bottom:.625rem">Formación: <b>${home.formation}</b></div>` : ''}
+        ${playerList(home)}
+      </div>
+      <div class="stat-card">
+        <div class="section-title">${ev.away_team} — ${statusLabel}</div>
+        ${away?.formation ? `<div style="font-size:12px;color:var(--tm);margin-bottom:.625rem">Formación: <b>${away.formation}</b></div>` : ''}
+        ${playerList(away)}
+      </div>
+    </div>`;
+}
+
+// ── weather ───────────────────────────────────────────────────
+function renderWeather(ev) {
+  const w = ev.weather;
+  if (!w || (w.temperature_c == null && w.wind_speed == null)) return '';
+  return `
+    <div class="stat-card" style="margin-bottom:.875rem">
+      <div class="section-title">Condiciones del partido</div>
+      <div class="weather-strip">
+        ${w.temperature_c != null ? `<div class="wi"><div class="wl">Temperatura</div><div class="wv">${w.temperature_c}°C</div></div>` : ''}
+        ${w.wind_speed != null ? `<div class="wi"><div class="wl">Viento</div><div class="wv">${w.wind_speed} km/h</div></div>` : ''}
+        ${w.description ? `<div class="wi"><div class="wl">Condición</div><div class="wv">${w.description}</div></div>` : ''}
+        ${ev.is_local_derby ? `<div class="wi"><div class="wl">Derby</div><div class="wv">🔥 Sí</div></div>` : ''}
+        ${ev.travel_distance_km ? `<div class="wi"><div class="wl">Distancia viaje</div><div class="wv">${ev.travel_distance_km} km</div></div>` : ''}
+      </div>
+    </div>`;
+}
+
+// ── init ──────────────────────────────────────────────────────
+loadEvents();
+</script>
+</body>
+</html>
