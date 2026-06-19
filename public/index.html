@@ -236,7 +236,7 @@ function renderEvents({ today=[], tomorrow=[] }) {
 function eventCard(e) {
   const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(e.status);
   const isFin  = e.status === 'finished';
-  const score  = (isFin||isLive) ? `${e.home_score??0}–${e.away_score??0}` : fmtTime(e.event_date);
+  const score  = (isFin||isLive) ? `${e.home_score||0}–${e.away_score||0}` : fmtTime(e.event_date);
   return `
     <div class="event-card" onclick="selectEvent(${e.id},this)">
       <div class="ec-time">
@@ -326,7 +326,7 @@ function renderScoreboard(ev, odds) {
   const isFin  = ev.status === 'finished';
   const isNS   = ev.status === 'notstarted';
   const sc = isNS ? `<span style="font-size:18px;color:var(--td)">${fmtTime(ev.event_date)}</span>`
-    : `${ev.home_score??'–'}<span style="color:var(--td);font-size:24px;margin:0 4px">–</span>${ev.away_score??'–'}`;
+    : `${ev.home_score||'–'}<span style="color:var(--td);font-size:24px;margin:0 4px">–</span>${ev.away_score||'–'}`;
   const statusLabel = {notstarted:'Por jugar',finished:'Finalizado','1st_half':'1ª Parte','2nd_half':'2ª Parte',halftime:'Descanso',inprogress:'En Juego',postponed:'Aplazado'}[ev.status]||ev.status;
   const sClass = isLive?'pill-live':isFin?'pill-fin':'pill-ns';
   const oddsRow = (odds?.home||odds?.draw||odds?.away) ? `
@@ -370,16 +370,16 @@ function renderMeta(meta) {
 // ── TAB: RESULTADO ────────────────────────────────────────────
 function renderResultado({ event:ev, homeStats:hs, awayStats:as, prediction:pred }) {
   const mr = pred?.markets?.match_result || {};
-  const hP = mr.prob_home ?? null;
-  const dP = mr.prob_draw ?? null;
-  const aP = mr.prob_away ?? null;
+  const hP = mr.prob_home || null;
+  const dP = mr.prob_draw || null;
+  const aP = mr.prob_away || null;
 
   // Probabilidades finales (ML + forma)
   const mc = pred?.model?.confidence || 0.3;
   const sf = Math.min(hs?.sample_factor||0, as?.sample_factor||0);
-  const hForm = hs?.home_ctx?.win_pct ?? hs?.win_pct ?? 33;
-  const aForm = as?.away_ctx?.win_pct ?? as?.win_pct ?? 33;
-  const dForm = (((hs?.home_ctx?.draw_pct??hs?.draw_pct??25) + (as?.away_ctx?.draw_pct??as?.draw_pct??25)) / 2);
+  const hForm = hs?.home_ctx?.win_pct || hs?.win_pct || 33;
+  const aForm = as?.away_ctx?.win_pct || as?.win_pct || 33;
+  const dForm = (((hs?.home_ctx?.draw_pct||hs?.draw_pct||25) + (as?.away_ctx?.draw_pct||as?.draw_pct||25)) / 2);
 
   function dynProb(ml, form) {
     if (ml == null) return Math.round(form * sf + 33 * (1 - sf));
@@ -413,17 +413,17 @@ function renderResultado({ event:ev, homeStats:hs, awayStats:as, prediction:pred
     <div class="team-grid" style="margin-top:.875rem">
       <div class="team-col">
         <div class="tc-name">${ev.home_team} (local)</div>
-        <div class="tc-row"><span>Victorias</span><span class="tc-val" style="color:var(--green)">${hs.home_ctx?.win_pct??hs.win_pct}%</span></div>
-        <div class="tc-row"><span>Empates</span><span class="tc-val" style="color:var(--yellow)">${hs.home_ctx?.draw_pct??hs.draw_pct}%</span></div>
-        <div class="tc-row"><span>Goles/partido</span><span class="tc-val">${hs.home_ctx?.avg_gf??hs.avg_gf}</span></div>
-        <div class="tc-row"><span>Portería a 0</span><span class="tc-val">${hs.home_ctx?.clean_sheet_pct??hs.clean_sheet_pct}%</span></div>
+        <div class="tc-row"><span>Victorias</span><span class="tc-val" style="color:var(--green)">${hs.home_ctx?.win_pct||hs.win_pct}%</span></div>
+        <div class="tc-row"><span>Empates</span><span class="tc-val" style="color:var(--yellow)">${hs.home_ctx?.draw_pct||hs.draw_pct}%</span></div>
+        <div class="tc-row"><span>Goles/partido</span><span class="tc-val">${hs.home_ctx?.avg_gf||hs.avg_gf}</span></div>
+        <div class="tc-row"><span>Portería a 0</span><span class="tc-val">${hs.home_ctx?.clean_sheet_pct||hs.clean_sheet_pct}%</span></div>
       </div>
       <div class="team-col">
         <div class="tc-name">${ev.away_team} (visitante)</div>
-        <div class="tc-row"><span>Victorias</span><span class="tc-val" style="color:var(--green)">${as.away_ctx?.win_pct??as.win_pct}%</span></div>
-        <div class="tc-row"><span>Empates</span><span class="tc-val" style="color:var(--yellow)">${as.away_ctx?.draw_pct??as.draw_pct}%</span></div>
-        <div class="tc-row"><span>Goles/partido</span><span class="tc-val">${as.away_ctx?.avg_gf??as.avg_gf}</span></div>
-        <div class="tc-row"><span>Portería a 0</span><span class="tc-val">${as.away_ctx?.clean_sheet_pct??as.clean_sheet_pct}%</span></div>
+        <div class="tc-row"><span>Victorias</span><span class="tc-val" style="color:var(--green)">${as.away_ctx?.win_pct||as.win_pct}%</span></div>
+        <div class="tc-row"><span>Empates</span><span class="tc-val" style="color:var(--yellow)">${as.away_ctx?.draw_pct||as.draw_pct}%</span></div>
+        <div class="tc-row"><span>Goles/partido</span><span class="tc-val">${as.away_ctx?.avg_gf||as.avg_gf}</span></div>
+        <div class="tc-row"><span>Portería a 0</span><span class="tc-val">${as.away_ctx?.clean_sheet_pct||as.clean_sheet_pct}%</span></div>
       </div>
     </div>` : '';
 
@@ -445,13 +445,13 @@ function renderGoles({ event:ev, homeStats:hs, awayStats:as, prediction:pred, od
 
   const hCtx = hs.home_ctx || hs;
   const aCtx = as.away_ctx || as;
-  const avgGoals = ((hCtx.avg_total??hs.avg_total||0) + (aCtx.avg_total??as.avg_total||0)) / 2;
+  const avgGoals = ((hCtx.avg_total||hs.avg_total||0) + (aCtx.avg_total||as.avg_total||0)) / 2;
   const xgTotal = (pred?.markets?.expected_goals?.home||0) + (pred?.markets?.expected_goals?.away||0);
 
-  const o15 = Math.round(((hCtx.over15_pct??hs.over15_pct||0) + (aCtx.over15_pct??as.over15_pct||0)) / 2);
-  const o25 = Math.round(((hCtx.over25_pct??hs.over25_pct||0) + (aCtx.over25_pct??as.over25_pct||0)) / 2);
-  const o35 = Math.round(((hCtx.over35_pct??hs.over35_pct||0) + (aCtx.over35_pct??as.over35_pct||0)) / 2);
-  const btts = Math.round(((hCtx.btts_pct??hs.btts_pct||0) + (aCtx.btts_pct??as.btts_pct||0)) / 2);
+  const o15 = Math.round(((hCtx.over15_pct||hs.over15_pct||0) + (aCtx.over15_pct||as.over15_pct||0)) / 2);
+  const o25 = Math.round(((hCtx.over25_pct||hs.over25_pct||0) + (aCtx.over25_pct||as.over25_pct||0)) / 2);
+  const o35 = Math.round(((hCtx.over35_pct||hs.over35_pct||0) + (aCtx.over35_pct||as.over35_pct||0)) / 2);
+  const btts = Math.round(((hCtx.btts_pct||hs.btts_pct||0) + (aCtx.btts_pct||as.btts_pct||0)) / 2);
 
   const recLine = avgGoals > 3 ? '2.5' : avgGoals > 2 ? '2.5' : '1.5';
 
@@ -467,7 +467,7 @@ function renderGoles({ event:ev, homeStats:hs, awayStats:as, prediction:pred, od
       <div class="mc-header">
         <div class="mc-icon">⚽</div>
         <div><div class="mc-title">Over / Under goles</div>
-        <div class="mc-sub">Prom. histórico ${avgGoals.toFixed(1)} goles/partido · xG combinado ${xgTotal.toFixed(2)} · ${ev.home_team} ${hCtx.avg_gf??hs.avg_gf} goles · ${ev.away_team} ${aCtx.avg_gf??as.avg_gf} goles</div></div>
+        <div class="mc-sub">Prom. histórico ${avgGoals.toFixed(1)} goles/partido · xG combinado ${xgTotal.toFixed(2)} · ${ev.home_team} ${hCtx.avg_gf||hs.avg_gf} goles · ${ev.away_team} ${aCtx.avg_gf||as.avg_gf} goles</div></div>
       </div>
       ${lines.map(l => `
         <div class="bar-row">
@@ -491,8 +491,8 @@ function renderCorners({ event:ev, histStats, homeHistStats, awayHistStats }) {
 
   if (!combined && !hc && !ac) return `<div class="no-data">Sin datos de corners históricos. Los datos de stats por partido solo están disponibles para algunos eventos.</div>`;
 
-  const avg = combined?.avg ?? ((hc?.avg||0) + (ac?.avg||0)) / 2;
-  const recLine = combined?.rec_line ?? hc?.rec_line ?? 9.5;
+  const avg = combined?.avg || ((hc?.avg||0) + (ac?.avg||0)) / 2;
+  const recLine = combined?.rec_line || hc?.rec_line || 9.5;
   const lines = combined?.lines || hc?.lines || [];
 
   return `
@@ -500,7 +500,7 @@ function renderCorners({ event:ev, histStats, homeHistStats, awayHistStats }) {
       <div class="mc-header">
         <div class="mc-icon">🚩</div>
         <div><div class="mc-title">Over / Under corners</div>
-        <div class="mc-sub">${ev.home_team} prom. ${hc?.avg??'N/D'} · ${ev.away_team} prom. ${ac?.avg??'N/D'} · Total esperado ${avg.toFixed(1)} · Basado en ${histStats?.matches??0} partidos</div></div>
+        <div class="mc-sub">${ev.home_team} prom. ${hc?.avg||'N/D'} · ${ev.away_team} prom. ${ac?.avg||'N/D'} · Total esperado ${avg.toFixed(1)} · Basado en ${histStats?.matches||0} partidos</div></div>
       </div>
       ${lines.map(l => `
         <div class="bar-row">
@@ -534,8 +534,8 @@ function renderTarjetas({ event:ev, histStats, homeHistStats, awayHistStats }) {
 
   if (!combined && !hc && !ac) return `<div class="no-data">Sin datos de tarjetas históricas disponibles.</div>`;
 
-  const avg = combined?.avg ?? ((hc?.avg||0) + (ac?.avg||0)) / 2;
-  const recLine = combined?.rec_line ?? hc?.rec_line ?? 3.5;
+  const avg = combined?.avg || ((hc?.avg||0) + (ac?.avg||0)) / 2;
+  const recLine = combined?.rec_line || hc?.rec_line || 3.5;
   const lines = combined?.lines || hc?.lines || [];
 
   return `
@@ -543,7 +543,7 @@ function renderTarjetas({ event:ev, histStats, homeHistStats, awayHistStats }) {
       <div class="mc-header">
         <div class="mc-icon">🟨</div>
         <div><div class="mc-title">Over / Under tarjetas amarillas</div>
-        <div class="mc-sub">${ev.home_team} prom. ${hc?.avg??'N/D'} · ${ev.away_team} prom. ${ac?.avg??'N/D'} · Total esperado ${avg.toFixed(1)} · Basado en ${histStats?.matches??0} partidos</div></div>
+        <div class="mc-sub">${ev.home_team} prom. ${hc?.avg||'N/D'} · ${ev.away_team} prom. ${ac?.avg||'N/D'} · Total esperado ${avg.toFixed(1)} · Basado en ${histStats?.matches||0} partidos</div></div>
       </div>
       ${lines.map(l => `
         <div class="bar-row">
@@ -567,8 +567,8 @@ function renderOffsides({ event:ev, histStats, homeHistStats, awayHistStats }) {
 
   if (!combined && !hc && !ac) return `<div class="no-data">Sin datos de fueras de lugar históricos disponibles.</div>`;
 
-  const avg = combined?.avg ?? ((hc?.avg||0) + (ac?.avg||0)) / 2;
-  const recLine = combined?.rec_line ?? hc?.rec_line ?? 3.5;
+  const avg = combined?.avg || ((hc?.avg||0) + (ac?.avg||0)) / 2;
+  const recLine = combined?.rec_line || hc?.rec_line || 3.5;
   const lines = combined?.lines || hc?.lines || [];
 
   return `
@@ -576,7 +576,7 @@ function renderOffsides({ event:ev, histStats, homeHistStats, awayHistStats }) {
       <div class="mc-header">
         <div class="mc-icon">🚦</div>
         <div><div class="mc-title">Over / Under fueras de lugar</div>
-        <div class="mc-sub">${ev.home_team} prom. ${hc?.avg??'N/D'} · ${ev.away_team} prom. ${ac?.avg??'N/D'} · Total esperado ${avg.toFixed(1)} · Basado en ${histStats?.matches??0} partidos</div></div>
+        <div class="mc-sub">${ev.home_team} prom. ${hc?.avg||'N/D'} · ${ev.away_team} prom. ${ac?.avg||'N/D'} · Total esperado ${avg.toFixed(1)} · Basado en ${histStats?.matches||0} partidos</div></div>
       </div>
       ${lines.map(l => `
         <div class="bar-row">
@@ -610,13 +610,13 @@ function renderPrediccion({ event:ev, prediction:pred, histStats, homeStats:hs, 
   if (sc.most_likely) topScores.push({ score: sc.most_likely, label: 'Más probable' });
 
   // Estimación de corners: promedio histórico del partido
-  const cornersEst = histStats?.corners?.avg ?? null;
-  const cardsEst   = histStats?.cards?.avg   ?? null;
-  const offsidesEst= histStats?.offsides?.avg ?? null;
+  const cornersEst = histStats?.corners?.avg || null;
+  const cardsEst   = histStats?.cards?.avg   || null;
+  const offsidesEst= histStats?.offsides?.avg || null;
 
   // xG
-  const xgH = eg.home ?? null;
-  const xgA = eg.away ?? null;
+  const xgH = eg.home || null;
+  const xgA = eg.away || null;
   const xgTotal = xgH != null && xgA != null ? (xgH + xgA).toFixed(2) : null;
 
   return `
@@ -637,7 +637,7 @@ function renderPrediccion({ event:ev, prediction:pred, histStats, homeStats:hs, 
     <div class="pred-numbers">
       <div class="pn-box">
         <div class="pn-label">Goles esperados</div>
-        <div class="pn-val">${xgTotal ?? '—'}</div>
+        <div class="pn-val">${xgTotal || '—'}</div>
         <div class="pn-unit">total xG</div>
         ${xgH!=null?`<div class="pn-range">${ev.home_team.split(' ')[0]} ${xgH.toFixed(2)} · ${ev.away_team.split(' ')[0]} ${xgA.toFixed(2)}</div>`:''}
       </div>
@@ -659,18 +659,18 @@ function renderPrediccion({ event:ev, prediction:pred, histStats, homeStats:hs, 
       <div class="sec-title">Probabilidades ML detalladas</div>
       <div class="bar-row">
         <span class="bar-label" style="min-width:130px">${ev.home_team}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${mr.prob_home??0}%;background:var(--blue)"></div></div>
-        <span class="bar-val" style="color:var(--blue)">${mr.prob_home?.toFixed(1)??'—'}%</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${mr.prob_home||0}%;background:var(--blue)"></div></div>
+        <span class="bar-val" style="color:var(--blue)">${mr.prob_home?.toFixed(1)||'—'}%</span>
       </div>
       <div class="bar-row">
         <span class="bar-label" style="min-width:130px">Empate</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${mr.prob_draw??0}%;background:var(--yellow)"></div></div>
-        <span class="bar-val" style="color:var(--yellow)">${mr.prob_draw?.toFixed(1)??'—'}%</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${mr.prob_draw||0}%;background:var(--yellow)"></div></div>
+        <span class="bar-val" style="color:var(--yellow)">${mr.prob_draw?.toFixed(1)||'—'}%</span>
       </div>
       <div class="bar-row">
         <span class="bar-label" style="min-width:130px">${ev.away_team}</span>
-        <div class="bar-track"><div class="bar-fill" style="width:${mr.prob_away??0}%;background:var(--purple)"></div></div>
-        <span class="bar-val" style="color:var(--purple)">${mr.prob_away?.toFixed(1)??'—'}%</span>
+        <div class="bar-track"><div class="bar-fill" style="width:${mr.prob_away||0}%;background:var(--purple)"></div></div>
+        <span class="bar-val" style="color:var(--purple)">${mr.prob_away?.toFixed(1)||'—'}%</span>
       </div>
       <div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-top:.875rem;font-size:12px">
         ${pred.markets?.over_under?.prob_over_15!=null?`<span style="color:var(--td)">Over 1.5: <b style="color:var(--t)">${pred.markets.over_under.prob_over_15.toFixed(1)}%</b></span>`:''}
@@ -703,13 +703,13 @@ function renderEquipos({ event:ev, homeStats:hs, awayStats:as }) {
         <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:.625rem">${name}</div>
         <div class="form-dots">${formHTML}</div>
         <div style="font-size:10px;color:var(--purple);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.07em">${ctxLabel} (${ctxStats.n||0} partidos)</div>
-        <div class="stat-row"><span class="sk">Victorias</span><span style="font-weight:500;color:var(--green)">${ctxStats.win_pct??stats.win_pct}%</span></div>
-        <div class="stat-row"><span class="sk">Empates</span><span style="font-weight:500;color:var(--yellow)">${ctxStats.draw_pct??stats.draw_pct}%</span></div>
-        <div class="stat-row"><span class="sk">Goles/partido</span><span style="font-weight:500">${ctxStats.avg_gf??stats.avg_gf}</span></div>
-        <div class="stat-row"><span class="sk">Goles recibidos/partido</span><span style="font-weight:500">${ctxStats.avg_ga??stats.avg_ga}</span></div>
-        <div class="stat-row"><span class="sk">BTTS</span><span style="font-weight:500">${ctxStats.btts_pct??stats.btts_pct}%</span></div>
-        <div class="stat-row"><span class="sk">Over 2.5</span><span style="font-weight:500">${ctxStats.over25_pct??stats.over25_pct}%</span></div>
-        <div class="stat-row"><span class="sk">Portería a 0</span><span style="font-weight:500">${ctxStats.clean_sheet_pct??stats.clean_sheet_pct}%</span></div>
+        <div class="stat-row"><span class="sk">Victorias</span><span style="font-weight:500;color:var(--green)">${ctxStats.win_pct||stats.win_pct}%</span></div>
+        <div class="stat-row"><span class="sk">Empates</span><span style="font-weight:500;color:var(--yellow)">${ctxStats.draw_pct||stats.draw_pct}%</span></div>
+        <div class="stat-row"><span class="sk">Goles/partido</span><span style="font-weight:500">${ctxStats.avg_gf||stats.avg_gf}</span></div>
+        <div class="stat-row"><span class="sk">Goles recibidos/partido</span><span style="font-weight:500">${ctxStats.avg_ga||stats.avg_ga}</span></div>
+        <div class="stat-row"><span class="sk">BTTS</span><span style="font-weight:500">${ctxStats.btts_pct||stats.btts_pct}%</span></div>
+        <div class="stat-row"><span class="sk">Over 2.5</span><span style="font-weight:500">${ctxStats.over25_pct||stats.over25_pct}%</span></div>
+        <div class="stat-row"><span class="sk">Portería a 0</span><span style="font-weight:500">${ctxStats.clean_sheet_pct||stats.clean_sheet_pct}%</span></div>
         <div style="margin-top:.875rem"><div class="sc-title">Últimos partidos</div>${recent}</div>
       </div>`;
   }
@@ -719,7 +719,7 @@ function renderEquipos({ event:ev, homeStats:hs, awayStats:as }) {
 // ── TAB: H2H ─────────────────────────────────────────────────
 function renderH2H({ event:ev, h2h }) {
   if (!h2h || !h2h.total_matches) return '<div class="no-data">Sin historial H2H indexado para estos equipos.</div>';
-  const hW = h2h.home_wins??0, aW = h2h.away_wins??0, dr = h2h.draws??0;
+  const hW = h2h.home_wins||0, aW = h2h.away_wins||0, dr = h2h.draws||0;
   const total = hW + aW + dr || 1;
   return `
     <div class="stat-card">
@@ -756,7 +756,7 @@ function renderAlineacion({ event:ev, lineups }) {
     if (!players.length) return '<div class="no-data">Sin datos</div>';
     return players.map(p => `
       <div class="player-row">
-        <span class="p-num">${p.jersey_number??''}</span>
+        <span class="p-num">${p.jersey_number||''}</span>
         <span class="p-name">${p.name}</span>
         <span class="p-pos">${p.position}</span>
         ${p.ai_score?`<span class="p-score">${(p.ai_score*100).toFixed(0)}</span>`:''}
