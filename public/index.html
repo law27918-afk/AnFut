@@ -7,30 +7,27 @@
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500&family=Space+Grotesk:wght@600;700&display=swap');
 :root{
-  --bg:#0b0d11;--s1:#13161c;--s2:#1a1e27;--s3:#20253000;
+  --bg:#0b0d11;--s1:#13161c;--s2:#1a1e27;
   --bd:rgba(255,255,255,.07);--bds:rgba(255,255,255,.13);
   --t:#dde1eb;--tm:#6b7491;--td:#3a3f55;
-  --green:#4ade80;--yellow:#fbbf24;--red:#f87171;--blue:#60a5fa;--purple:#a78bfa;--orange:#fb923c;
+  --green:#4ade80;--yellow:#fbbf24;--red:#f87171;--blue:#60a5fa;--purple:#a78bfa;
   --r:10px;--rl:14px;
 }
 *{box-sizing:border-box;margin:0;padding:0}
 body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-size:14px;line-height:1.55;min-height:100vh}
 .shell{max-width:900px;margin:0 auto;padding:1.5rem 1rem 5rem}
 
-/* header */
 .hdr{display:flex;align-items:center;justify-content:space-between;margin-bottom:1.75rem;padding-bottom:1.25rem;border-bottom:.5px solid var(--bd)}
 .hdr-left h1{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700;color:#fff;letter-spacing:-.02em}
 .hdr-left p{font-size:12px;color:var(--tm);margin-top:2px}
 .hdr-date{font-size:12px;color:var(--td);text-align:right}
 
-/* day section */
 .day-label{font-size:11px;letter-spacing:.1em;text-transform:uppercase;color:var(--td);font-weight:600;margin-bottom:.625rem;display:flex;align-items:center;gap:8px}
 .day-label::after{content:'';flex:1;height:.5px;background:var(--bd)}
 .day-count{font-size:10px;color:var(--td);background:var(--s2);padding:2px 8px;border-radius:20px}
 
-/* event cards grid */
 .events-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:.625rem;margin-bottom:1.5rem}
-.event-card{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:.875rem 1rem;cursor:pointer;transition:border-color .15s,background .15s;position:relative}
+.event-card{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:.875rem 1rem;cursor:pointer;transition:border-color .15s,background .15s}
 .event-card:hover{background:var(--s2);border-color:var(--bds)}
 .event-card.active{border-color:var(--green);background:rgba(74,222,128,.04)}
 .ec-time{font-size:11px;color:var(--td);margin-bottom:.5rem;display:flex;align-items:center;gap:6px}
@@ -39,19 +36,13 @@ body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-siz
 .ec-teams{font-size:13px;font-weight:500;color:#fff;margin-bottom:3px}
 .ec-teams .vs{color:var(--td);font-weight:400;font-size:11px;margin:0 4px}
 .ec-league{font-size:11px;color:var(--purple)}
-.ec-odds{display:flex;gap:6px;margin-top:.625rem}
-.ec-odd{flex:1;background:var(--s2);border-radius:6px;padding:4px 0;text-align:center}
-.ec-odd .ol{font-size:9px;color:var(--td);text-transform:uppercase;letter-spacing:.05em}
-.ec-odd .ov{font-size:13px;font-weight:600;color:var(--t)}
 
-/* loading */
 .loading-bar{display:flex;align-items:center;gap:10px;padding:2rem 0;color:var(--tm);font-size:13px}
 .spin{width:14px;height:14px;border:2px solid var(--bd);border-top-color:var(--green);border-radius:50%;animation:spin .6s linear infinite;flex-shrink:0}
 @keyframes spin{to{transform:rotate(360deg)}}
 .empty{color:var(--td);font-size:13px;padding:1rem 0;font-style:italic}
 .err-box{background:rgba(248,113,113,.07);border:.5px solid rgba(248,113,113,.2);border-radius:var(--r);padding:.875rem 1rem;color:var(--red);font-size:13px}
 
-/* analysis panel */
 #analysisPanel{margin-top:1.5rem;display:none}
 
 /* scoreboard */
@@ -61,29 +52,38 @@ body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-siz
 .sb-name{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#fff}
 .sb-sub{font-size:11px;color:var(--tm);margin-top:2px}
 .sb-score{font-family:'Space Grotesk',sans-serif;font-size:36px;font-weight:700;color:#fff;letter-spacing:-.02em;text-align:center;min-width:80px}
-.sb-meta{display:flex;justify-content:center;gap:10px;flex-wrap:wrap;margin-top:.625rem}
 .pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:20px;font-size:11px;font-weight:500}
 .pill-live{background:rgba(248,113,113,.15);color:var(--red)}
 .pill-ns{background:rgba(96,165,250,.1);color:var(--blue)}
 .pill-fin{background:rgba(74,222,128,.1);color:var(--green)}
-.pill-neutral{background:var(--s2);color:var(--tm)}
 
-/* bets section */
+/* meta bar */
+.meta-bar{display:flex;gap:.625rem;flex-wrap:wrap;margin-bottom:.875rem}
+.meta-pill{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--r);padding:.625rem .875rem;flex:1;min-width:100px;text-align:center}
+.meta-pill .mp-label{font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:.07em;margin-bottom:3px}
+.meta-pill .mp-val{font-family:'Space Grotesk',sans-serif;font-size:20px;font-weight:700}
+.global-pass{background:rgba(248,113,113,.07);border:.5px solid rgba(248,113,113,.2);border-radius:var(--r);padding:.75rem 1rem;color:var(--red);font-size:12px;margin-bottom:.875rem;line-height:1.6}
+
+/* bets */
 .bets-wrap{margin-bottom:.875rem}
-.bet-card{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:1rem 1.25rem;margin-bottom:.625rem;display:flex;align-items:center;gap:1rem}
-.bet-card.recommended{border-color:rgba(74,222,128,.3);background:rgba(74,222,128,.04)}
-.bet-card.medium{border-color:rgba(251,191,36,.2)}
+.bet-card{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:1rem 1.25rem;margin-bottom:.625rem}
+.bet-card.v-BET {border-color:rgba(74,222,128,.35);background:rgba(74,222,128,.04)}
+.bet-card.v-LEAN{border-color:rgba(251,191,36,.25)}
+.bet-card.v-PASS{opacity:.55}
+.bet-top{display:flex;align-items:flex-start;gap:1rem}
 .bet-left{flex:1}
-.bet-market{font-size:14px;font-weight:500;color:#fff;margin-bottom:3px}
-.bet-reason{font-size:12px;color:var(--tm);line-height:1.5}
+.bet-market{font-size:14px;font-weight:500;color:#fff;margin-bottom:4px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.bet-reason{font-size:12px;color:var(--tm);line-height:1.6}
+.bet-bottom{display:flex;gap:1rem;flex-wrap:wrap;margin-top:.625rem;padding-top:.5rem;border-top:.5px solid var(--bd);font-size:11px;color:var(--td)}
+.bet-bottom b{color:var(--t)}
 .bet-right{text-align:right;flex-shrink:0}
 .bet-prob{font-family:'Space Grotesk',sans-serif;font-size:26px;font-weight:700;line-height:1}
-.bet-conf{font-size:10px;font-weight:600;letter-spacing:.07em;text-transform:uppercase;margin-top:3px}
-.bet-odds-row{font-size:11px;color:var(--td);margin-top:3px}
-.conf-alta{color:var(--green)}
-.conf-media{color:var(--yellow)}
-.conf-baja{color:var(--red)}
-.rec-badge{display:inline-block;font-size:9px;font-weight:700;letter-spacing:.08em;text-transform:uppercase;padding:2px 7px;border-radius:20px;margin-left:6px;background:rgba(74,222,128,.15);color:var(--green)}
+.bet-ci{font-size:10px;color:var(--td);margin-top:2px}
+.vbadge{font-size:10px;font-weight:700;letter-spacing:.07em;text-transform:uppercase;padding:3px 9px;border-radius:20px}
+.vbadge-BET {background:rgba(74,222,128,.15);color:var(--green)}
+.vbadge-LEAN{background:rgba(251,191,36,.12);color:var(--yellow)}
+.vbadge-PASS{background:rgba(248,113,113,.1);color:var(--red)}
+.pass-list{font-size:11px;color:var(--red);margin-top:5px;line-height:1.6}
 
 /* two column */
 .g2{display:grid;grid-template-columns:1fr 1fr;gap:.75rem;margin-bottom:.875rem}
@@ -93,27 +93,15 @@ body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-siz
 .stat-card{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:1rem 1.25rem}
 .sc-title{font-size:11px;color:var(--tm);font-weight:500;margin-bottom:.875rem}
 .sc-team{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:.75rem}
-
-/* form dots */
 .form-dots{display:flex;gap:4px;margin-bottom:.75rem}
 .dot{width:24px;height:24px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:700}
 .dot-W{background:rgba(74,222,128,.2);color:var(--green)}
 .dot-D{background:rgba(251,191,36,.15);color:var(--yellow)}
 .dot-L{background:rgba(248,113,113,.15);color:var(--red)}
-
-/* stat rows */
 .stat-row{display:flex;justify-content:space-between;align-items:center;padding:5px 0;border-bottom:.5px solid var(--bd);font-size:13px}
 .stat-row:last-child{border-bottom:none}
 .stat-row .sk{color:var(--tm)}
-.stat-row .sv{font-weight:500;color:var(--t)}
-
-/* prob bar */
-.prob-row{margin-bottom:6px}
-.prob-labels{display:flex;justify-content:space-between;font-size:12px;color:var(--tm);margin-bottom:3px}
-.prob-track{height:5px;background:var(--s2);border-radius:99px;overflow:hidden}
-.prob-fill{height:100%;border-radius:99px}
-
-/* recent games */
+.stat-row .sv{font-weight:500}
 .recent-game{display:flex;align-items:center;gap:8px;padding:5px 0;border-bottom:.5px solid var(--bd);font-size:12px}
 .recent-game:last-child{border-bottom:none}
 .rg-res{width:20px;height:20px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:9px;font-weight:700;flex-shrink:0}
@@ -121,28 +109,20 @@ body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-siz
 .rg-score{color:var(--t);font-weight:500;font-size:13px}
 .rg-date{color:var(--td);font-size:10px;min-width:50px;text-align:right}
 
-/* h2h */
 .h2h-stats{display:grid;grid-template-columns:1fr auto 1fr;gap:.5rem;text-align:center;margin-bottom:.75rem}
 .h2h-val{font-family:'Space Grotesk',sans-serif;font-size:22px;font-weight:700}
 .h2h-label{font-size:10px;color:var(--td);text-transform:uppercase;letter-spacing:.06em}
 .h2h-mid{display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px}
-
-/* section title */
+.prob-track{height:5px;background:var(--s2);border-radius:99px;overflow:hidden;display:flex}
+.prob-fill{height:100%;border-radius:99px}
 .section-title{font-size:10px;letter-spacing:.1em;text-transform:uppercase;color:var(--td);font-weight:600;margin-bottom:.75rem}
-
-/* tabs */
-.tabs{display:flex;gap:4px;margin-bottom:1rem;flex-wrap:wrap}
-.tab{padding:6px 14px;border-radius:20px;font-size:12px;font-weight:500;cursor:pointer;border:.5px solid transparent;color:var(--tm);transition:all .15s}
-.tab:hover{color:var(--t);background:var(--s2)}
-.tab.active{background:var(--s2);border-color:var(--bds);color:var(--t)}
-
-/* no data */
 .no-data{color:var(--td);font-size:13px;font-style:italic;padding:.5rem 0}
-
-/* weather strip */
-.weather-strip{display:flex;gap:1.5rem;flex-wrap:wrap;padding:.75rem 0}
+.weather-strip{display:flex;gap:1.5rem;flex-wrap:wrap;padding:.5rem 0}
 .wi .wl{font-size:10px;color:var(--td)}
 .wi .wv{font-size:14px;font-weight:500}
+.ctx-tabs{display:flex;gap:4px;margin-bottom:.75rem}
+.ctx-tab{font-size:11px;padding:3px 10px;border-radius:20px;cursor:pointer;border:.5px solid var(--bd);color:var(--tm)}
+.ctx-tab.active{background:var(--s2);border-color:var(--bds);color:var(--t)}
 </style>
 </head>
 <body>
@@ -151,7 +131,7 @@ body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-siz
   <div class="hdr">
     <div class="hdr-left">
       <h1>⚽ Scout</h1>
-      <p>Análisis de apuestas basado en datos reales</p>
+      <p>Motor cuantitativo de análisis de apuestas</p>
     </div>
     <div class="hdr-date" id="hdrDate"></div>
   </div>
@@ -163,28 +143,23 @@ body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-siz
   <div id="analysisPanel"></div>
 
 </div>
-
 <script>
-// ── utils ──────────────────────────────────────────────────────
 const $ = id => document.getElementById(id);
 
 function fmtTime(iso) {
-  return new Date(iso).toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit', timeZone:'America/Tegucigalpa' });
+  return new Date(iso).toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit', timeZone:'America/Panama' });
 }
 function fmtDate(iso) {
-  return new Date(iso).toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' });
+  return new Date(iso).toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long', timeZone:'America/Panama' });
 }
-function pct(v) { return v != null ? Math.round(v * 100) + '%' : '—'; }
 function probColor(p) {
   return p >= 60 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)';
 }
 
-// ── header date ───────────────────────────────────────────────
 $('hdrDate').innerHTML = new Date().toLocaleDateString('es', {
-  weekday:'long', day:'numeric', month:'long', year:'numeric'
+  weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'America/Panama'
 });
 
-// ── load today's events ───────────────────────────────────────
 async function loadEvents() {
   try {
     const r = await fetch('/api/today');
@@ -198,58 +173,47 @@ async function loadEvents() {
 
 function renderEvents(data) {
   const { today = [], tomorrow = [] } = data;
-  let html = '';
-
   if (!today.length && !tomorrow.length) {
     $('eventsArea').innerHTML = '<div class="empty">No hay partidos programados para hoy ni mañana.</div>';
     return;
   }
-
+  let html = '';
   if (today.length) {
     html += `<div class="day-label">Hoy <span class="day-count">${today.length}</span></div>`;
-    html += '<div class="events-grid">' + today.map(e => eventCard(e)).join('') + '</div>';
+    html += '<div class="events-grid">' + today.map(eventCard).join('') + '</div>';
   }
   if (tomorrow.length) {
     html += `<div class="day-label">Mañana <span class="day-count">${tomorrow.length}</span></div>`;
-    html += '<div class="events-grid">' + tomorrow.map(e => eventCard(e)).join('') + '</div>';
+    html += '<div class="events-grid">' + tomorrow.map(eventCard).join('') + '</div>';
   }
-
   $('eventsArea').innerHTML = html;
 }
 
 function eventCard(e) {
   const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(e.status);
   const isFin  = e.status === 'finished';
-  const score  = isFin || isLive
-    ? `${e.home_score ?? 0}–${e.away_score ?? 0}`
-    : fmtTime(e.event_date);
-
+  const score  = isFin || isLive ? `${e.home_score ?? 0}–${e.away_score ?? 0}` : fmtTime(e.event_date);
   return `
-    <div class="event-card" onclick="selectEvent(${e.id}, this)" data-id="${e.id}">
+    <div class="event-card" onclick="selectEvent(${e.id},this)" data-id="${e.id}">
       <div class="ec-time">
         ${isLive ? '<div class="ec-live"></div> EN VIVO' : score}
-        ${e.round_name ? `<span style="margin-left:auto;color:var(--td);font-size:10px">${e.round_name}</span>` : ''}
+        ${e.round_name ? `<span style="margin-left:auto;font-size:10px;color:var(--td)">${e.round_name}</span>` : ''}
       </div>
       <div class="ec-teams">${e.home_team} <span class="vs">vs</span> ${e.away_team}</div>
-      <div class="ec-league">${e.league_id ? '🏆' : ''} ${e.round_name || ''}</div>
+      <div class="ec-league">${e.group_name || ''}</div>
     </div>`;
 }
 
-// ── select event ──────────────────────────────────────────────
 let currentId = null;
-
 async function selectEvent(id, el) {
   if (currentId === id) return;
   currentId = id;
-
   document.querySelectorAll('.event-card').forEach(c => c.classList.remove('active'));
   if (el) el.classList.add('active');
-
   const panel = $('analysisPanel');
   panel.style.display = 'block';
-  panel.innerHTML = '<div class="loading-bar"><div class="spin"></div> Analizando partido y últimos 10 juegos de cada equipo…</div>';
-  panel.scrollIntoView({ behavior: 'smooth', block: 'start' });
-
+  panel.innerHTML = '<div class="loading-bar"><div class="spin"></div> Analizando datos y calculando probabilidades…</div>';
+  panel.scrollIntoView({ behavior:'smooth', block:'start' });
   try {
     const r = await fetch(`/api/analyze?id=${id}`);
     const data = await r.json();
@@ -260,51 +224,39 @@ async function selectEvent(id, el) {
   }
 }
 
-// ── render analysis ───────────────────────────────────────────
 function renderAnalysis(d) {
-  const { event: ev, homeStats, awayStats, odds, prediction, h2h, lineups, bets } = d;
-
-  const panel = $('analysisPanel');
-  panel.innerHTML = `
-    ${renderScoreboard(ev, odds)}
-    ${renderBets(bets, ev)}
-    <div class="g2">
-      ${renderTeamStats(homeStats, ev.home_team)}
-      ${renderTeamStats(awayStats, ev.away_team)}
-    </div>
-    ${renderH2H(h2h, ev)}
-    ${renderPrediction(prediction, ev)}
-    ${renderLineups(lineups, ev)}
-    ${renderWeather(ev)}
-  `;
+  const { event: ev, homeStats, awayStats, odds, prediction, h2h, lineups, bets, meta } = d;
+  $('analysisPanel').innerHTML =
+    renderScoreboard(ev, odds) +
+    renderMeta(meta, ev) +
+    renderBets(bets, ev) +
+    `<div class="g2">${renderTeamStats(homeStats, ev.home_team, 'home')}${renderTeamStats(awayStats, ev.away_team, 'away')}</div>` +
+    renderH2H(h2h, ev) +
+    renderPrediction(prediction, ev) +
+    renderLineups(lineups, ev) +
+    renderWeather(ev);
 }
 
-// ── scoreboard ────────────────────────────────────────────────
 function renderScoreboard(ev, odds) {
   const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(ev.status);
   const isFin  = ev.status === 'finished';
   const isNS   = ev.status === 'notstarted';
-
-  const statusClass = isLive ? 'pill-live' : isFin ? 'pill-fin' : 'pill-ns';
-  const statusLabel = { notstarted:'Por jugar', finished:'Finalizado', '1st_half':'1ª Parte',
-    '2nd_half':'2ª Parte', halftime:'Descanso', inprogress:'En Juego', postponed:'Aplazado' }[ev.status] || ev.status;
-
+  const statusClass = isLive?'pill-live':isFin?'pill-fin':'pill-ns';
+  const statusLabel = {notstarted:'Por jugar',finished:'Finalizado','1st_half':'1ª Parte','2nd_half':'2ª Parte',halftime:'Descanso',inprogress:'En Juego',postponed:'Aplazado'}[ev.status]||ev.status;
   const scoreHTML = isNS
     ? `<span style="font-size:18px;color:var(--td)">${fmtTime(ev.event_date)}</span>`
-    : `${ev.home_score ?? '–'}<span style="color:var(--td);font-size:24px;margin:0 4px">–</span>${ev.away_score ?? '–'}`;
-
-  const oddsHTML = (odds.home || odds.draw || odds.away) ? `
+    : `${ev.home_score??'–'}<span style="color:var(--td);font-size:24px;margin:0 4px">–</span>${ev.away_score??'–'}`;
+  const oddsRow = (odds.home||odds.draw||odds.away) ? `
     <div style="display:flex;gap:8px;justify-content:center;margin-top:.75rem">
-      ${odds.home ? `<div class="ec-odd"><div class="ol">1</div><div class="ov">${odds.home.toFixed(2)}</div></div>` : ''}
-      ${odds.draw ? `<div class="ec-odd"><div class="ol">X</div><div class="ov">${odds.draw.toFixed(2)}</div></div>` : ''}
-      ${odds.away ? `<div class="ec-odd"><div class="ol">2</div><div class="ov">${odds.away.toFixed(2)}</div></div>` : ''}
+      ${odds.home?`<div style="flex:1;background:var(--s2);border-radius:6px;padding:5px;text-align:center"><div style="font-size:9px;color:var(--td);text-transform:uppercase">1</div><div style="font-size:14px;font-weight:600">${odds.home.toFixed(2)}</div></div>`:''}
+      ${odds.draw?`<div style="flex:1;background:var(--s2);border-radius:6px;padding:5px;text-align:center"><div style="font-size:9px;color:var(--td);text-transform:uppercase">X</div><div style="font-size:14px;font-weight:600">${odds.draw.toFixed(2)}</div></div>`:''}
+      ${odds.away?`<div style="flex:1;background:var(--s2);border-radius:6px;padding:5px;text-align:center"><div style="font-size:9px;color:var(--td);text-transform:uppercase">2</div><div style="font-size:14px;font-weight:600">${odds.away.toFixed(2)}</div></div>`:''}
     </div>` : '';
-
   return `
     <div class="scoreboard">
       <div style="text-align:center;margin-bottom:.75rem">
         <span class="pill ${statusClass}">${statusLabel}</span>
-        ${isLive && ev.current_minute ? `<span style="margin-left:8px;font-size:12px;color:var(--tm)">${ev.current_minute}'</span>` : ''}
+        ${isLive&&ev.current_minute?`<span style="margin-left:8px;font-size:12px;color:var(--tm)">${ev.current_minute}'</span>`:''}
       </div>
       <div class="sb-inner">
         <div class="sb-team"><div class="sb-name">${ev.home_team}</div><div class="sb-sub">Local</div></div>
@@ -312,60 +264,86 @@ function renderScoreboard(ev, odds) {
         <div class="sb-team"><div class="sb-name">${ev.away_team}</div><div class="sb-sub">Visitante</div></div>
       </div>
       <div style="text-align:center;font-size:12px;color:var(--tm)">${fmtDate(ev.event_date)}</div>
-      ${oddsHTML}
+      ${oddsRow}
     </div>`;
 }
 
-// ── bets ──────────────────────────────────────────────────────
-function renderBets(bets, ev) {
-  if (!bets || !bets.length) return '<div class="section-title" style="margin-bottom:.5rem">Apuestas recomendadas</div><div class="no-data">Sin datos suficientes para calcular probabilidades.</div>';
+function renderMeta(meta, ev) {
+  if (!meta) return '';
+  const confColor = meta.confidence >= 70 ? 'var(--green)' : meta.confidence >= 50 ? 'var(--yellow)' : 'var(--red)';
+  const trapColor = meta.trap <= 3 ? 'var(--green)' : meta.trap <= 5 ? 'var(--yellow)' : 'var(--red)';
+  const mcPct = Math.round((meta.model_confidence||0)*100);
+  const sfPct = Math.round((meta.sample_factor||0)*100);
+  const lstatus = {confirmed:'✅ Confirmada', predicted:'🤖 Predicha', unavailable:'⚠️ Sin datos'}[meta.lineup_status]||meta.lineup_status;
+  let html = `
+    <div class="meta-bar">
+      <div class="meta-pill"><div class="mp-label">Confianza</div><div class="mp-val" style="color:${confColor}">${meta.confidence}/100</div></div>
+      <div class="meta-pill"><div class="mp-label">Trap Score</div><div class="mp-val" style="color:${trapColor}">${meta.trap}/10</div></div>
+      <div class="meta-pill"><div class="mp-label">Modelo ML</div><div class="mp-val">${mcPct}%</div></div>
+      <div class="meta-pill"><div class="mp-label">Muestra</div><div class="mp-val">${sfPct}%</div></div>
+      <div class="meta-pill"><div class="mp-label">Alineación</div><div class="mp-val" style="font-size:13px;padding-top:4px">${lstatus}</div></div>
+    </div>`;
+  if (meta.global_pass && meta.global_pass_reasons?.length) {
+    html += `<div class="global-pass">🚫 <b>PASS recomendado:</b> ${meta.global_pass_reasons.join(' · ')}</div>`;
+  }
+  return html;
+}
 
+function renderBets(bets, ev) {
+  if (!bets?.length) return '<div class="no-data">Sin datos suficientes para calcular apuestas.</div>';
   const cards = bets.map(b => {
-    const cls = b.recommend ? 'recommended' : b.confidence === 'MEDIA' ? 'medium' : '';
-    const confCls = `conf-${b.confidence.toLowerCase()}`;
-    const evHTML = b.ev != null
-      ? `EV: <span style="color:${b.ev > 0 ? 'var(--green)' : 'var(--red)'}">${b.ev > 0 ? '+' : ''}${b.ev}</span>`
-      : '';
+    const v = b.verdict || 'PASS';
+    const pcol = probColor(b.prob);
+    const evColor = b.ev > 0 ? 'var(--green)' : b.ev < 0 ? 'var(--red)' : 'var(--td)';
+    const edgePct = b.edge != null ? (b.edge * 100).toFixed(1) : null;
+    const ciText = b.ci ? `IC 95%: ${b.ci[0]}–${b.ci[1]}%` : '';
+    const passHTML = b.pass_reasons?.length
+      ? `<div class="pass-list">⚠️ ${b.pass_reasons.join(' · ')}</div>` : '';
     return `
-      <div class="bet-card ${cls}">
-        <div class="bet-left">
-          <div class="bet-market">${b.market}${b.recommend ? '<span class="rec-badge">✓ Recomendada</span>' : ''}</div>
-          <div class="bet-reason">${b.reason}</div>
-          ${b.odds ? `<div class="bet-odds-row">Cuota: <b>${b.odds.toFixed(2)}</b> &nbsp; ${evHTML}</div>` : ''}
+      <div class="bet-card v-${v}">
+        <div class="bet-top">
+          <div class="bet-left">
+            <div class="bet-market">
+              ${b.market}
+              <span class="vbadge vbadge-${v}">${v}</span>
+            </div>
+            <div class="bet-reason">${b.reason}</div>
+            ${passHTML}
+          </div>
+          <div class="bet-right">
+            <div class="bet-prob" style="color:${pcol}">${b.prob}%</div>
+            ${ciText ? `<div class="bet-ci">${ciText}</div>` : ''}
+          </div>
         </div>
-        <div class="bet-right">
-          <div class="bet-prob" style="color:${probColor(b.prob)}">${b.prob}%</div>
-          <div class="bet-conf ${confCls}">${b.confidence}</div>
+        <div class="bet-bottom">
+          ${b.odds ? `<span>Cuota: <b>${b.odds.toFixed(2)}</b></span>` : ''}
+          ${b.ev != null ? `<span>EV: <b style="color:${evColor}">${b.ev > 0 ? '+' : ''}${b.ev}</b></span>` : ''}
+          ${edgePct != null ? `<span>Edge: <b style="color:${parseFloat(edgePct)>=4?'var(--green)':'var(--red)'}">${edgePct}%</b></span>` : ''}
+          ${b.kelly ? `<span>Kelly: <b>${b.kelly.pct}% del bankroll</b></span>` : ''}
         </div>
       </div>`;
   }).join('');
-
   return `
     <div style="margin-bottom:.875rem">
-      <div class="section-title">Apuestas recomendadas — basado en últimos 10 partidos</div>
+      <div class="section-title">Apuestas — modelo cuantitativo</div>
       <div class="bets-wrap">${cards}</div>
     </div>`;
 }
 
-// ── team stats ────────────────────────────────────────────────
-function renderTeamStats(stats, teamName) {
-  if (!stats) return `
-    <div class="stat-card">
-      <div class="sc-team">${teamName}</div>
-      <div class="no-data">Sin datos de partidos recientes.</div>
-    </div>`;
+function renderTeamStats(stats, teamName, ctx) {
+  if (!stats) return `<div class="stat-card"><div class="sc-team">${teamName}</div><div class="no-data">Sin datos recientes.</div></div>`;
 
-  const formHTML = stats.form.map(r =>
-    `<div class="dot dot-${r}">${r}</div>`
-  ).join('');
+  // Mostrar contexto home o away si disponible
+  const ctxStats = ctx === 'home' ? (stats.home_ctx || stats) : (stats.away_ctx || stats);
+  const ctxLabel = ctx === 'home' ? 'Como local' : 'Como visitante';
 
+  const formHTML = stats.form.map(r => `<div class="dot dot-${r}">${r}</div>`).join('');
   const recentHTML = stats.recent.map(g => {
     const res = g.gf > g.ga ? 'W' : g.gf < g.ga ? 'L' : 'D';
-    const cls = `dot-${res}`;
     return `
       <div class="recent-game">
-        <div class="rg-res ${cls}">${res}</div>
-        <div class="rg-opp">${g.home ? 'vs' : '@'} ${g.opponent}</div>
+        <div class="rg-res dot-${res}">${res}</div>
+        <div class="rg-opp">${g.home?'vs':'@'} ${g.opponent}</div>
         <div class="rg-score">${g.gf}–${g.ga}</div>
         <div class="rg-date">${g.date}</div>
       </div>`;
@@ -374,164 +352,125 @@ function renderTeamStats(stats, teamName) {
   return `
     <div class="stat-card">
       <div class="sc-team">${teamName}</div>
-      <div class="sc-title">Forma (últimos ${stats.games} partidos)</div>
       <div class="form-dots">${formHTML}</div>
-      <div class="stat-row"><span class="sk">Victorias</span><span class="sv" style="color:var(--green)">${stats.win_pct}%</span></div>
-      <div class="stat-row"><span class="sk">Empates</span><span class="sv" style="color:var(--yellow)">${stats.draw_pct}%</span></div>
-      <div class="stat-row"><span class="sk">Derrotas</span><span class="sv" style="color:var(--red)">${stats.loss_pct}%</span></div>
-      <div class="stat-row"><span class="sk">Goles/partido</span><span class="sv">${stats.avg_goals_for}</span></div>
-      <div class="stat-row"><span class="sk">Goles rec./partido</span><span class="sv">${stats.avg_goals_against}</span></div>
-      <div class="stat-row"><span class="sk">Total goles/partido</span><span class="sv">${stats.avg_total_goals}</span></div>
-      <div class="stat-row"><span class="sk">BTTS %</span><span class="sv">${stats.btts_pct}%</span></div>
-      <div class="stat-row"><span class="sk">Over 2.5 %</span><span class="sv">${stats.over25_pct}%</span></div>
-      <div class="stat-row"><span class="sk">Portería a 0 %</span><span class="sv">${stats.clean_sheet_pct}%</span></div>
-      <div style="margin-top:.875rem">
-        <div class="sc-title">Últimos partidos</div>
-        ${recentHTML}
-      </div>
+      <div style="font-size:10px;color:var(--purple);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.07em">${ctxLabel} (${ctxStats.n||0} partidos)</div>
+      <div class="stat-row"><span class="sk">Forma (pts%)</span><span class="sv" style="color:${probColor(ctxStats.form_pts_pct||0)}">${ctxStats.form_pts_pct??stats.form_pts_pct??'—'}%</span></div>
+      <div class="stat-row"><span class="sk">Victorias</span><span class="sv" style="color:var(--green)">${ctxStats.win_pct??stats.win_pct}%</span></div>
+      <div class="stat-row"><span class="sk">Empates</span><span class="sv" style="color:var(--yellow)">${ctxStats.draw_pct??stats.draw_pct}%</span></div>
+      <div class="stat-row"><span class="sk">Goles/partido</span><span class="sv">${ctxStats.avg_gf??stats.avg_goals_for}</span></div>
+      <div class="stat-row"><span class="sk">Goles rec./partido</span><span class="sv">${ctxStats.avg_ga??stats.avg_goals_against}</span></div>
+      <div class="stat-row"><span class="sk">BTTS %</span><span class="sv">${ctxStats.btts_pct??stats.btts_pct}%</span></div>
+      <div class="stat-row"><span class="sk">Over 2.5 %</span><span class="sv">${ctxStats.over25_pct??stats.over25_pct}%</span></div>
+      <div class="stat-row"><span class="sk">Portería a 0 %</span><span class="sv">${ctxStats.clean_sheet_pct??stats.clean_sheet_pct}%</span></div>
+      <div style="margin-top:.875rem"><div class="sc-title">Últimos partidos (todos)</div>${recentHTML}</div>
     </div>`;
 }
 
-// ── H2H ───────────────────────────────────────────────────────
 function renderH2H(h2h, ev) {
-  if (!h2h || Object.values(h2h).every(v => v === null)) return '';
-
-  const hW = h2h.home_wins ?? 0;
-  const aW = h2h.away_wins ?? 0;
-  const dr = h2h.draws ?? 0;
+  if (!h2h || !h2h.total_matches) return '';
+  const hW = h2h.home_wins??0, aW = h2h.away_wins??0, dr = h2h.draws??0;
   const total = hW + aW + dr || 1;
-
   return `
     <div class="stat-card" style="margin-bottom:.875rem">
       <div class="section-title">Historial H2H</div>
       <div class="h2h-stats">
-        <div>
-          <div class="h2h-val" style="color:var(--blue)">${hW}</div>
-          <div class="h2h-label">${ev.home_team}</div>
-        </div>
-        <div class="h2h-mid">
-          <div class="h2h-val" style="color:var(--yellow)">${dr}</div>
-          <div class="h2h-label">Empates</div>
-        </div>
-        <div>
-          <div class="h2h-val" style="color:var(--purple)">${aW}</div>
-          <div class="h2h-label">${ev.away_team}</div>
-        </div>
+        <div><div class="h2h-val" style="color:var(--blue)">${hW}</div><div class="h2h-label">${ev.home_team}</div></div>
+        <div class="h2h-mid"><div class="h2h-val" style="color:var(--yellow)">${dr}</div><div class="h2h-label">Empates</div></div>
+        <div><div class="h2h-val" style="color:var(--purple)">${aW}</div><div class="h2h-label">${ev.away_team}</div></div>
       </div>
-      <div class="prob-row">
-        <div class="prob-track" style="height:6px">
-          <div class="prob-fill" style="width:${Math.round(hW/total*100)}%;background:var(--blue)"></div>
-          <div class="prob-fill" style="width:${Math.round(dr/total*100)}%;background:var(--yellow)"></div>
-          <div class="prob-fill" style="width:${Math.round(aW/total*100)}%;background:var(--purple)"></div>
-        </div>
+      <div class="prob-track" style="height:6px;margin-bottom:.75rem">
+        <div class="prob-fill" style="width:${Math.round(hW/total*100)}%;background:var(--blue)"></div>
+        <div class="prob-fill" style="width:${Math.round(dr/total*100)}%;background:var(--yellow)"></div>
+        <div class="prob-fill" style="width:${Math.round(aW/total*100)}%;background:var(--purple)"></div>
       </div>
-      <div style="display:flex;gap:1rem;flex-wrap:wrap;margin-top:.75rem">
-        ${h2h.avg_goals != null ? `<div><span style="color:var(--td);font-size:11px">Goles/partido: </span><span style="font-weight:500">${h2h.avg_goals?.toFixed(1)??'—'}</span></div>` : ''}
-        ${h2h.btts_pct != null ? `<div><span style="color:var(--td);font-size:11px">BTTS: </span><span style="font-weight:500">${Math.round(h2h.btts_pct*100)}%</span></div>` : ''}
-        ${h2h.over_25_pct != null ? `<div><span style="color:var(--td);font-size:11px">Over 2.5: </span><span style="font-weight:500">${Math.round(h2h.over_25_pct*100)}%</span></div>` : ''}
-        ${h2h.total_matches != null ? `<div><span style="color:var(--td);font-size:11px">Total partidos: </span><span style="font-weight:500">${h2h.total_matches}</span></div>` : ''}
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;font-size:12px">
+        ${h2h.total_matches?`<span style="color:var(--td)">Total: <b style="color:var(--t)">${h2h.total_matches}</b></span>`:''}
+        ${h2h.avg_total_goals!=null?`<span style="color:var(--td)">Goles/partido: <b style="color:var(--t)">${h2h.avg_total_goals?.toFixed(1)}</b></span>`:''}
+        ${h2h.btts_pct!=null?`<span style="color:var(--td)">BTTS: <b style="color:var(--t)">${Math.round(h2h.btts_pct*100)}%</b></span>`:''}
+        ${h2h.over_25_pct!=null?`<span style="color:var(--td)">Over 2.5: <b style="color:var(--t)">${Math.round(h2h.over_25_pct*100)}%</b></span>`:''}
       </div>
     </div>`;
 }
 
-// ── prediction ────────────────────────────────────────────────
 function renderPrediction(pred, ev) {
   if (!pred) return '';
-
-  const mr = pred.markets?.match_result || {};
-  const eg = pred.markets?.expected_goals || {};
-  const ou = pred.markets?.over_under || {};
-  const bt = pred.markets?.btts || {};
-  const sc = pred.markets?.score || {};
-  const rec = pred.recommendations || {};
-
-  const hP = Math.round((mr.prob_home || 0) * 100);
-  const dP = Math.round((mr.prob_draw || 0) * 100);
-  const aP = Math.round((mr.prob_away || 0) * 100);
-
+  const mr = pred.markets?.match_result||{};
+  const eg = pred.markets?.expected_goals||{};
+  const ou = pred.markets?.over_under||{};
+  const bt = pred.markets?.btts||{};
+  const sc = pred.markets?.score||{};
+  const hP = mr.prob_home??0, dP = mr.prob_draw??0, aP = mr.prob_away??0;
   return `
     <div class="stat-card" style="margin-bottom:.875rem">
-      <div class="section-title">Predicción ML (CatBoost)</div>
+      <div class="section-title">Predicción ML CatBoost — confianza ${Math.round((pred.model?.confidence||0)*100)}%</div>
       <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:.75rem;margin-bottom:.875rem">
-        <div style="text-align:center">
-          <div style="font-size:10px;color:var(--tm);margin-bottom:4px">${ev.home_team}</div>
-          <div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--blue)">${hP}%</div>
-          <div class="prob-track" style="margin-top:4px"><div class="prob-fill" style="width:${hP}%;background:var(--blue)"></div></div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:10px;color:var(--tm);margin-bottom:4px">Empate</div>
-          <div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--yellow)">${dP}%</div>
-          <div class="prob-track" style="margin-top:4px"><div class="prob-fill" style="width:${dP}%;background:var(--yellow)"></div></div>
-        </div>
-        <div style="text-align:center">
-          <div style="font-size:10px;color:var(--tm);margin-bottom:4px">${ev.away_team}</div>
-          <div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:var(--purple)">${aP}%</div>
-          <div class="prob-track" style="margin-top:4px"><div class="prob-fill" style="width:${aP}%;background:var(--purple)"></div></div>
-        </div>
+        ${[{t:ev.home_team,p:hP,c:'var(--blue)'},{t:'Empate',p:dP,c:'var(--yellow)'},{t:ev.away_team,p:aP,c:'var(--purple)'}].map(x=>`
+          <div style="text-align:center">
+            <div style="font-size:10px;color:var(--tm);margin-bottom:4px">${x.t}</div>
+            <div style="font-family:'Space Grotesk',sans-serif;font-size:24px;font-weight:700;color:${x.c}">${x.p.toFixed(1)}%</div>
+            <div style="height:4px;background:var(--s2);border-radius:99px;margin-top:4px;overflow:hidden"><div style="width:${x.p}%;height:100%;background:${x.c};border-radius:99px"></div></div>
+          </div>`).join('')}
       </div>
-      <div style="display:flex;gap:1.5rem;flex-wrap:wrap">
-        ${eg.home != null ? `<div><span style="color:var(--td);font-size:11px">xG Local: </span><span style="font-weight:500">${eg.home?.toFixed(2)}</span></div>` : ''}
-        ${eg.away != null ? `<div><span style="color:var(--td);font-size:11px">xG Visitante: </span><span style="font-weight:500">${eg.away?.toFixed(2)}</span></div>` : ''}
-        ${sc.most_likely ? `<div><span style="color:var(--td);font-size:11px">Marcador probable: </span><span style="font-weight:500">${sc.most_likely}</span></div>` : ''}
-        ${ou.prob_over_25 != null ? `<div><span style="color:var(--td);font-size:11px">Over 2.5: </span><span style="font-weight:500">${Math.round(ou.prob_over_25*100)}%</span></div>` : ''}
-        ${bt.prob_yes != null ? `<div><span style="color:var(--td);font-size:11px">BTTS: </span><span style="font-weight:500">${Math.round(bt.prob_yes*100)}%</span></div>` : ''}
-        ${pred.model?.confidence != null ? `<div><span style="color:var(--td);font-size:11px">Confianza modelo: </span><span style="font-weight:500">${Math.round(pred.model.confidence*100)}%</span></div>` : ''}
+      <div style="display:flex;gap:1.25rem;flex-wrap:wrap;font-size:12px">
+        ${eg.home!=null?`<span style="color:var(--td)">xG Local: <b style="color:var(--t)">${eg.home?.toFixed(2)}</b></span>`:''}
+        ${eg.away!=null?`<span style="color:var(--td)">xG Visitante: <b style="color:var(--t)">${eg.away?.toFixed(2)}</b></span>`:''}
+        ${sc.most_likely?`<span style="color:var(--td)">Marcador probable: <b style="color:var(--t)">${sc.most_likely}</b></span>`:''}
+        ${ou.prob_over_25!=null?`<span style="color:var(--td)">Over 2.5: <b style="color:var(--t)">${ou.prob_over_25.toFixed(1)}%</b></span>`:''}
+        ${bt.prob_yes!=null?`<span style="color:var(--td)">BTTS: <b style="color:var(--t)">${bt.prob_yes.toFixed(1)}%</b></span>`:''}
       </div>
     </div>`;
 }
 
-// ── lineups ───────────────────────────────────────────────────
 function renderLineups(lin, ev) {
-  if (!lin || lin.lineup_status === 'unavailable' || !lin.lineups) return '';
-
-  const home = lin.lineups?.home;
-  const away = lin.lineups?.away;
-  const statusLabel = { confirmed:'✅ Confirmada', predicted:'🤖 Predicha IA' }[lin.lineup_status] || lin.lineup_status;
-
-  function playerList(side) {
-    const players = side?.players || [];
+  if (!lin||lin.lineup_status==='unavailable'||!lin.lineups) return '';
+  const home = lin.lineups?.home, away = lin.lineups?.away;
+  const sl = {confirmed:'✅ Confirmada',predicted:'🤖 Predicha IA'}[lin.lineup_status]||lin.lineup_status;
+  function pl(side) {
+    const players = side?.players||[];
     if (!players.length) return '<div class="no-data">Sin datos</div>';
-    return players.map(p => `
+    return players.map(p=>`
       <div style="display:flex;align-items:center;gap:8px;padding:4px 0;border-bottom:.5px solid var(--bd)">
-        <span style="font-size:11px;color:var(--td);min-width:20px">${p.jersey_number ?? ''}</span>
+        <span style="font-size:11px;color:var(--td);min-width:20px">${p.jersey_number??''}</span>
         <span style="font-size:13px;flex:1">${p.name}</span>
         <span style="font-size:10px;color:var(--tm);background:var(--s2);padding:2px 7px;border-radius:20px">${p.position}</span>
+        ${p.ai_score?`<span style="font-size:10px;color:var(--td)">${(p.ai_score*100).toFixed(0)}</span>`:''}
       </div>`).join('');
   }
-
+  const unavH = lin.unavailable_players?.home||[], unavA = lin.unavailable_players?.away||[];
   return `
     <div class="g2">
       <div class="stat-card">
-        <div class="section-title">${ev.home_team} — ${statusLabel}</div>
-        ${home?.formation ? `<div style="font-size:12px;color:var(--tm);margin-bottom:.625rem">Formación: <b>${home.formation}</b></div>` : ''}
-        ${playerList(home)}
+        <div class="section-title">${ev.home_team} — ${sl}</div>
+        ${home?.formation?`<div style="font-size:12px;color:var(--tm);margin-bottom:.5rem">Formación: <b>${home.formation}</b></div>`:''}
+        ${pl(home)}
+        ${unavH.length?`<div style="margin-top:.75rem"><div style="font-size:11px;color:var(--red);margin-bottom:4px">Bajas</div>${unavH.map(p=>`<div style="font-size:12px;color:var(--td);padding:2px 0">❌ ${p.name} — ${p.reason}</div>`).join('')}</div>`:''}
       </div>
       <div class="stat-card">
-        <div class="section-title">${ev.away_team} — ${statusLabel}</div>
-        ${away?.formation ? `<div style="font-size:12px;color:var(--tm);margin-bottom:.625rem">Formación: <b>${away.formation}</b></div>` : ''}
-        ${playerList(away)}
+        <div class="section-title">${ev.away_team} — ${sl}</div>
+        ${away?.formation?`<div style="font-size:12px;color:var(--tm);margin-bottom:.5rem">Formación: <b>${away.formation}</b></div>`:''}
+        ${pl(away)}
+        ${unavA.length?`<div style="margin-top:.75rem"><div style="font-size:11px;color:var(--red);margin-bottom:4px">Bajas</div>${unavA.map(p=>`<div style="font-size:12px;color:var(--td);padding:2px 0">❌ ${p.name} — ${p.reason}</div>`).join('')}</div>`:''}
       </div>
     </div>`;
 }
 
-// ── weather ───────────────────────────────────────────────────
 function renderWeather(ev) {
   const w = ev.weather;
-  if (!w || (w.temperature_c == null && w.wind_speed == null)) return '';
+  if (!w||(w.temperature_c==null&&w.wind_speed==null)) return '';
   return `
     <div class="stat-card" style="margin-bottom:.875rem">
       <div class="section-title">Condiciones del partido</div>
       <div class="weather-strip">
-        ${w.temperature_c != null ? `<div class="wi"><div class="wl">Temperatura</div><div class="wv">${w.temperature_c}°C</div></div>` : ''}
-        ${w.wind_speed != null ? `<div class="wi"><div class="wl">Viento</div><div class="wv">${w.wind_speed} km/h</div></div>` : ''}
-        ${w.description ? `<div class="wi"><div class="wl">Condición</div><div class="wv">${w.description}</div></div>` : ''}
-        ${ev.is_local_derby ? `<div class="wi"><div class="wl">Derby</div><div class="wv">🔥 Sí</div></div>` : ''}
-        ${ev.travel_distance_km ? `<div class="wi"><div class="wl">Distancia viaje</div><div class="wv">${ev.travel_distance_km} km</div></div>` : ''}
+        ${w.temperature_c!=null?`<div class="wi"><div class="wl">Temperatura</div><div class="wv">${w.temperature_c}°C</div></div>`:''}
+        ${w.wind_speed!=null?`<div class="wi"><div class="wl">Viento</div><div class="wv">${w.wind_speed} km/h</div></div>`:''}
+        ${w.description?`<div class="wi"><div class="wl">Condición</div><div class="wv">${w.description}</div></div>`:''}
+        ${ev.is_local_derby?`<div class="wi"><div class="wl">Derby</div><div class="wv">🔥 Sí</div></div>`:''}
+        ${ev.travel_distance_km?`<div class="wi"><div class="wl">Distancia viaje</div><div class="wv">${ev.travel_distance_km} km</div></div>`:''}
+        ${ev.is_neutral_ground?`<div class="wi"><div class="wl">Terreno neutral</div><div class="wv">⚠️ Sí</div></div>`:''}
       </div>
     </div>`;
 }
 
-// ── init ──────────────────────────────────────────────────────
 loadEvents();
 </script>
 </body>
