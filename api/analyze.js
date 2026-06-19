@@ -109,20 +109,17 @@ async function fetchHistoricalStats(eventIds, teamId) {
   results.forEach((stats, i) => {
     if (!stats) return;
 
-    // La API puede devolver stats en diferentes formatos
-    // Intentamos extraer datos del equipo específico
-    const home = stats.home || stats.stats?.home || {};
-    const away = stats.away || stats.stats?.away || {};
+    // La API devuelve { stats: { home: {...}, away: {...} } }
+    const home = stats.stats?.home || stats.home || {};
+    const away = stats.stats?.away || stats.away || {};
 
-    // Determinamos qué lado es nuestro equipo en ese partido
-    // (usamos el evento original para saberlo, pero como no lo tenemos aquí
-    // usamos ambos lados y sumamos el total del partido)
-    const totalCorners  = (home.corners  || 0) + (away.corners  || 0);
+    // Campo correcto: corner_kicks (no corners)
+    const totalCorners  = (home.corner_kicks || 0) + (away.corner_kicks || 0);
     const totalYellows  = (home.yellow_cards || 0) + (away.yellow_cards || 0);
     const totalReds     = (home.red_cards    || 0) + (away.red_cards    || 0);
     const totalOffsides = (home.offsides     || 0) + (away.offsides     || 0);
 
-    if (totalCorners > 0 || totalYellows > 0) {
+    if (totalYellows > 0 || totalOffsides > 0 || totalCorners > 0) {
       corners  += totalCorners;
       yellows  += totalYellows;
       reds     += totalReds;
