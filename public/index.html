@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scout — Análisis de Apuestas</title>
   <style>
-    /* ═══ ESTILOS (igual que antes, sin cambios) ═══ */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap');
+
     :root {
       --bg: #0b0d11;
       --s1: #13161c;
@@ -25,8 +25,11 @@
       --r: 10px;
       --rl: 14px;
       --sidebar-w: 460px;
+      --left-panel-w: 240px;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       background: var(--bg);
       color: var(--t);
@@ -34,25 +37,227 @@
       font-size: 16px;
       line-height: 1.5;
       overflow-x: hidden;
+      min-height: 100vh;
     }
-    .shell {
-      position: relative;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 1.5rem 1.5rem 3rem;
+
+    .app-container {
       display: flex;
       min-height: 100vh;
     }
-    .main-content {
+
+    /* ── Panel izquierdo (filtros) ── */
+    .left-panel {
+      width: var(--left-panel-w);
+      background: var(--s1);
+      border-right: 1px solid var(--bd);
+      padding: 1.5rem 1rem;
+      overflow-y: auto;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      z-index: 50;
+      transition: transform 0.3s ease;
+    }
+    .left-panel h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.1rem;
+      color: #fff;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--bd);
+    }
+    .league-filter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--t);
+      padding: 6px 8px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .league-filter:hover { background: var(--s2); }
+    .league-filter input[type="checkbox"] { accent-color: var(--green); width: 16px; height: 16px; cursor: pointer; }
+    .league-filter .lf-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .league-filter .lf-count { font-size: 0.7rem; color: var(--td); background: var(--s2); padding: 2px 8px; border-radius: 20px; }
+
+    /* ── Área principal ── */
+    .main-area {
+      margin-left: var(--left-panel-w);
       flex: 1;
       transition: margin-right 0.3s ease;
       margin-right: 0;
+      max-width: 1200px;
+      width: 100%;
+      padding: 1.5rem 1.5rem 3rem;
     }
-    .main-content.sidebar-open {
+    .main-area.sidebar-open {
       margin-right: var(--sidebar-w);
     }
 
-    /* Sidebar */
+    /* Header */
+    .hdr {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--bd);
+      padding-bottom: 1rem;
+    }
+    .hdr-left h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .hdr-left p { font-size: 0.9rem; color: var(--tm); margin-top: 2px; }
+
+    /* Date nav */
+    .date-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .date-nav button {
+      background: var(--s2);
+      border: 1px solid var(--bd);
+      color: var(--t);
+      font-size: 1.4rem;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .date-nav button:hover { background: var(--s1); border-color: var(--bds); }
+    .date-nav button:disabled { opacity: 0.3; cursor: default; }
+    .date-nav .date-label {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #fff;
+      min-width: 180px;
+      text-align: center;
+    }
+    .date-nav .date-sub {
+      font-size: 0.75rem;
+      color: var(--tm);
+      display: block;
+    }
+
+    /* ── Grupos de liga plegables ── */
+    .league-group {
+      margin-bottom: 1rem;
+      border: 1px solid var(--bd);
+      border-radius: var(--rl);
+      overflow: hidden;
+    }
+    .league-group-header {
+      display: flex;
+      align-items: center;
+      gap: 0.75rem;
+      background: var(--s1);
+      padding: 0.9rem 1.25rem;
+      cursor: pointer;
+      user-select: none;
+      transition: background 0.15s;
+      border-bottom: 1px solid transparent;
+    }
+    .league-group-header:hover { background: var(--s2); }
+    .league-group-header .lg-arrow {
+      font-size: 0.9rem;
+      color: var(--tm);
+      transition: transform 0.2s ease;
+      width: 20px;
+      text-align: center;
+    }
+    .league-group-header .lg-name {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1rem;
+      font-weight: 600;
+      color: #fff;
+      flex: 1;
+    }
+    .league-group-header .lg-count {
+      font-size: 0.7rem;
+      color: var(--td);
+      background: var(--s2);
+      padding: 2px 8px;
+      border-radius: 20px;
+    }
+    .league-group-body {
+      max-height: 0;
+      overflow: hidden;
+      transition: max-height 0.3s ease;
+      background: var(--bg);
+    }
+    .league-group.open .league-group-header {
+      border-bottom-color: var(--bd);
+    }
+    .league-group.open .league-group-header .lg-arrow {
+      transform: rotate(90deg);
+    }
+    .league-group.open .league-group-body {
+      max-height: 2000px; /* lo suficiente */
+    }
+    .league-group-body .event-card-big {
+      border-bottom: 1px solid var(--bd);
+      border-radius: 0;
+      margin: 0;
+    }
+    .league-group-body .event-card-big:last-child {
+      border-bottom: none;
+    }
+
+    /* Tarjetas de partido (stack) */
+    .event-card-big {
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+      padding: 1.1rem 1.5rem;
+      cursor: pointer;
+      transition: background .15s;
+      background: var(--s1);
+    }
+    .event-card-big:hover { background: var(--s2); }
+    .event-card-big .ec-time {
+      font-size: 1rem;
+      color: var(--tm);
+      min-width: 60px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .ec-live { width: 8px; height: 8px; background: var(--red); border-radius: 50%; margin-bottom: 4px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .ec-teams {
+      flex: 1;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .ec-teams .vs { color: var(--td); font-weight: 400; font-size: 0.8rem; margin: 0 6px; }
+    .ec-meta { font-size: 0.8rem; color: var(--tm); text-align: right; }
+    .ec-meta .round { color: var(--td); }
+
+    .empty-state, .loading-state {
+      text-align: center;
+      color: var(--td);
+      font-size: 1rem;
+      padding: 3rem 0;
+    }
+    .err-box { background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.2); border-radius: var(--r); padding: 0.875rem 1rem; color: var(--red); font-size: 0.85rem; }
+
+    /* ── Sidebar derecho (análisis) ── */
     .sidebar {
       position: fixed;
       top: 0;
@@ -89,109 +294,7 @@
     }
     .overlay.active { display: block; }
 
-    /* Header */
-    .hdr {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      margin-bottom: 2rem;
-      border-bottom: 1px solid var(--bd);
-      padding-bottom: 1rem;
-    }
-    .hdr-left h1 {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: #fff;
-    }
-    .hdr-left p { font-size: 0.9rem; color: var(--tm); margin-top: 2px; }
-
-    /* Date nav */
-    .date-nav {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1.5rem;
-      margin-bottom: 1.8rem;
-      font-family: 'Space Grotesk', sans-serif;
-    }
-    .date-nav button {
-      background: var(--s2);
-      border: 1px solid var(--bd);
-      color: var(--t);
-      font-size: 1.4rem;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: background .2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .date-nav button:hover { background: var(--s1); border-color: var(--bds); }
-    .date-nav button:disabled { opacity: 0.3; cursor: default; }
-    .date-nav .date-label {
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: #fff;
-      min-width: 180px;
-      text-align: center;
-    }
-    .date-nav .date-sub {
-      font-size: 0.75rem;
-      color: var(--tm);
-      display: block;
-    }
-
-    /* Events stack */
-    .events-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .event-card-big {
-      background: var(--s1);
-      border: 1px solid var(--bd);
-      border-radius: var(--rl);
-      padding: 1.2rem 1.5rem;
-      cursor: pointer;
-      transition: background .15s, border-color .15s;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    .event-card-big:hover { background: var(--s2); border-color: var(--bds); }
-    .event-card-big .ec-time {
-      font-size: 1rem;
-      color: var(--tm);
-      min-width: 60px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .ec-live { width: 8px; height: 8px; background: var(--red); border-radius: 50%; margin-bottom: 4px; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .ec-teams {
-      flex: 1;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #fff;
-    }
-    .ec-teams .vs { color: var(--td); font-weight: 400; font-size: 0.8rem; margin: 0 6px; }
-    .ec-meta { font-size: 0.8rem; color: var(--tm); text-align: right; }
-    .ec-meta .league { color: var(--purple); font-weight: 500; }
-
-    .empty-state, .loading-state {
-      text-align: center;
-      color: var(--td);
-      font-size: 1rem;
-      padding: 3rem 0;
-    }
-    .err-box { background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.2); border-radius: var(--r); padding: 0.875rem 1rem; color: var(--red); font-size: 0.85rem; }
-
-    /* (Todos los demás estilos de market-card, stat-card, etc., se mantienen igual; los incluyo por completitud pero están copiados del código anterior) */
+    /* ── Estilos internos del análisis (igual que antes) ── */
     .market-card, .stat-card {
       background: var(--s1);
       border: 1px solid var(--bd);
@@ -277,8 +380,15 @@
   </style>
 </head>
 <body>
-<div class="shell">
-  <div class="main-content" id="mainContent">
+<div class="app-container">
+  <!-- Panel izquierdo de filtros -->
+  <aside class="left-panel" id="leftPanel">
+    <h2>🏆 Ligas</h2>
+    <div id="leagueFilters"></div>
+  </aside>
+
+  <!-- Área principal -->
+  <div class="main-area" id="mainArea">
     <div class="hdr">
       <div class="hdr-left">
         <h1>⚽ Scout</h1>
@@ -287,7 +397,7 @@
       <div style="font-size:0.9rem; color:var(--td)" id="todayDate"></div>
     </div>
 
-    <div class="date-nav" id="dateNav">
+    <div class="date-nav">
       <button id="prevBtn" onclick="changeDate(-1)">←</button>
       <div>
         <span class="date-label" id="dateDisplay">Hoy</span>
@@ -300,13 +410,14 @@
       <div class="loading-state">Cargando partidos…</div>
     </div>
   </div>
-
-  <div class="sidebar" id="sidebar">
-    <button class="close-btn" onclick="closeSidebar()">&times;</button>
-    <div id="sidebarContent"></div>
-  </div>
-  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 </div>
+
+<!-- Sidebar derecho (análisis) -->
+<div class="sidebar" id="sidebar">
+  <button class="close-btn" onclick="closeSidebar()">&times;</button>
+  <div id="sidebarContent"></div>
+</div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -321,10 +432,12 @@ function fmtDate(iso) {
 $('todayDate').innerText = new Date().toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'America/Panama' });
 
 // ──── Estado global ────
-let allEventsByDate = {};   // { 'YYYY-MM-DD': [...events] }
-let sortedDates = [];       // ['2026-06-20', '2026-06-21', ...]
-let currentIndex = 0;       // índice en sortedDates
+let allEventsByDate = {};       // { 'YYYY-MM-DD': [...events] }
+let sortedDates = [];
+let currentIndex = 0;
 let currentId = null, currentData = null, currentTab = 'resultado';
+let visibleLeagues = new Set(); // nombres de liga visibles
+let allLeagues = [];            // nombres únicos de liga
 
 // ──── Carga inicial desde /api/today ────
 async function loadInitialEvents() {
@@ -333,7 +446,6 @@ async function loadInitialEvents() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    // Agrupar eventos por fecha (usando event_date, recortado a YYYY-MM-DD)
     const events = [...(data.today || []), ...(data.tomorrow || [])];
     const grouped = {};
     events.forEach(e => {
@@ -346,6 +458,17 @@ async function loadInitialEvents() {
     allEventsByDate = grouped;
     sortedDates = Object.keys(grouped).sort();
 
+    // Extraer todas las ligas únicas
+    const leagueSet = new Set();
+    Object.values(grouped).forEach(evts => evts.forEach(e => {
+      const league = e.group_name || e.league_name || 'Sin liga';
+      leagueSet.add(league);
+    }));
+    allLeagues = Array.from(leagueSet).sort();
+    // Por defecto todas visibles
+    visibleLeagues = new Set(allLeagues);
+    renderLeagueFilters();
+
     if (sortedDates.length === 0) {
       $('eventsStack').innerHTML = '<div class="empty-state">No hay partidos programados.</div>';
       $('prevBtn').disabled = true;
@@ -353,16 +476,36 @@ async function loadInitialEvents() {
       return;
     }
 
-    // Posicionar el índice en la fecha más cercana a hoy
     const todayStr = new Date().toISOString().slice(0,10);
     currentIndex = sortedDates.indexOf(todayStr);
-    if (currentIndex === -1) currentIndex = 0; // si hoy no está, empezar en la primera
+    if (currentIndex === -1) currentIndex = 0;
 
     updateDateUI();
     renderEventsForCurrentDate();
   } catch(e) {
     $('eventsStack').innerHTML = `<div class="err-box">❌ ${e.message}</div>`;
   }
+}
+
+// ──── Filtros de liga ────
+function renderLeagueFilters() {
+  const container = $('leagueFilters');
+  if (!allLeagues.length) {
+    container.innerHTML = '<div style="font-size:0.8rem;color:var(--td)">Sin ligas</div>';
+    return;
+  }
+  container.innerHTML = allLeagues.map(league => `
+    <label class="league-filter">
+      <input type="checkbox" ${visibleLeagues.has(league) ? 'checked' : ''} onchange="toggleLeague('${league.replace(/'/g, "\\'")}', this.checked)">
+      <span class="lf-name">${league}</span>
+    </label>
+  `).join('');
+}
+
+function toggleLeague(league, isChecked) {
+  if (isChecked) visibleLeagues.add(league);
+  else visibleLeagues.delete(league);
+  renderEventsForCurrentDate();
 }
 
 // ──── Navegación de fecha ────
@@ -376,7 +519,7 @@ function changeDate(offset) {
 
 function updateDateUI() {
   const dateStr = sortedDates[currentIndex];
-  const date = new Date(dateStr + 'T12:00:00'); // mediodía para evitar desfases
+  const date = new Date(dateStr + 'T12:00:00');
   const today = new Date(); today.setHours(0,0,0,0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
 
@@ -393,39 +536,73 @@ function updateDateUI() {
   $('nextBtn').disabled = (currentIndex === sortedDates.length - 1);
 }
 
+// ──── Renderizado de eventos agrupados por liga ────
 function renderEventsForCurrentDate() {
   const dateStr = sortedDates[currentIndex];
-  const events = allEventsByDate[dateStr] || [];
-  if (events.length === 0) {
-    $('eventsStack').innerHTML = '<div class="empty-state">No hay partidos en esta fecha.</div>';
+  const allEvents = allEventsByDate[dateStr] || [];
+
+  // Filtrar por ligas visibles
+  const filtered = allEvents.filter(e => {
+    const league = e.group_name || e.league_name || 'Sin liga';
+    return visibleLeagues.has(league);
+  });
+
+  if (!filtered.length) {
+    $('eventsStack').innerHTML = '<div class="empty-state">No hay partidos visibles para esta fecha.</div>';
     return;
   }
-  const html = events.map(e => {
-    const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(e.status);
-    const isFin  = e.status === 'finished';
-    const timeDisplay = isLive ? '<div class="ec-live"></div> EN VIVO' : (isFin ? 'Final' : fmtTime(e.event_date));
-    const score = (isFin || isLive) ? `${e.home_score||0} – ${e.away_score||0}` : '';
-    return `
-      <div class="event-card-big" onclick="openAnalysis(${e.id})">
-        <div class="ec-time">${timeDisplay}${score ? `<div style="font-size:1.1rem;color:#fff;margin-top:2px">${score}</div>` : ''}</div>
-        <div class="ec-teams">${e.home_team} <span class="vs">vs</span> ${e.away_team}</div>
-        <div class="ec-meta">
-          <div class="league">${e.group_name || ''}</div>
-          ${e.round_name ? `<div style="font-size:0.7rem;color:var(--td)">${e.round_name}</div>` : ''}
+
+  // Agrupar por liga
+  const groups = {};
+  filtered.forEach(e => {
+    const league = e.group_name || e.league_name || 'Sin liga';
+    if (!groups[league]) groups[league] = [];
+    groups[league].push(e);
+  });
+
+  const sortedLeagues = Object.keys(groups).sort((a,b) => a.localeCompare(b));
+
+  let html = '';
+  sortedLeagues.forEach(league => {
+    const events = groups[league];
+    const eventCards = events.map(e => {
+      const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(e.status);
+      const isFin  = e.status === 'finished';
+      const timeDisplay = isLive ? '<div class="ec-live"></div> EN VIVO' : (isFin ? 'Final' : fmtTime(e.event_date));
+      const score = (isFin || isLive) ? `${e.home_score||0} – ${e.away_score||0}` : '';
+      return `
+        <div class="event-card-big" onclick="openAnalysis(${e.id})">
+          <div class="ec-time">${timeDisplay}${score ? `<div style="font-size:1.1rem;color:#fff;margin-top:2px">${score}</div>` : ''}</div>
+          <div class="ec-teams">${e.home_team} <span class="vs">vs</span> ${e.away_team}</div>
+          <div class="ec-meta">
+            ${e.round_name ? `<div class="round">${e.round_name}</div>` : ''}
+          </div>
+        </div>`;
+    }).join('');
+
+    html += `
+      <div class="league-group open">
+        <div class="league-group-header" onclick="this.parentElement.classList.toggle('open')">
+          <span class="lg-arrow">▶</span>
+          <span class="lg-name">${league}</span>
+          <span class="lg-count">${events.length}</span>
         </div>
-      </div>`;
-  }).join('');
+        <div class="league-group-body">${eventCards}</div>
+      </div>
+    `;
+  });
+
   $('eventsStack').innerHTML = html;
 }
 
-// ──── Sidebar ────
+// ──── Sidebar (análisis) ────
 function openSidebar() {
-  document.querySelector('.main-content').classList.add('sidebar-open');
+  $('mainArea').classList.add('sidebar-open');
   $('sidebar').classList.add('open');
   $('overlay').classList.add('active');
 }
 function closeSidebar() {
-  document.querySelector('.main-content').classList.remove('sidebar-open');
+  $('mainArea').classList.remove('sidebar-open');
   $('sidebar').classList.remove('open');
   $('overlay').classList.remove('active');
   currentId = null;
@@ -478,7 +655,7 @@ function switchSidebarTab(tab) {
   $('tabContentSidebar').innerHTML = renderTabContent(tab, currentData);
 }
 
-// ──── Funciones de renderizado de pestañas (copiadas exactamente del código anterior) ────
+// ──── Funciones de renderizado de pestañas (copiadas exactamente) ────
 function renderTabContent(tab, d) {
   switch(tab) {
     case 'resultado':  return renderResultado(d);
@@ -493,6 +670,8 @@ function renderTabContent(tab, d) {
     default: return '';
   }
 }
+
+function barColor(p) { return p >= 65 ? '#4ade80' : p >= 45 ? '#fbbf24' : '#f87171'; }
 
 function renderScoreboard(ev, odds) {
   const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(ev.status);
@@ -534,7 +713,6 @@ function renderMeta(meta) {
     </div>`;
 }
 
-// ──── RENDERERS DE PESTAÑAS (COPIADOS EXACTOS DEL CÓDIGO ORIGINAL) ────
 function renderResultado({ event:ev, homeStats:hs, awayStats:as, prediction:pred }) {
   const mr = pred?.markets?.match_result || {};
   const hP = mr.prob_home || null;
@@ -854,7 +1032,7 @@ function renderAlineacion({ event:ev, lineups }) {
     </div>`;
 }
 
-// ──── Iniciar ────
+// Iniciar
 loadInitialEvents();
 </script>
 </body>
