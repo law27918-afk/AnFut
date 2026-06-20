@@ -5,6 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scout — Análisis de Apuestas</title>
   <style>
+    /* ═══ ESTILOS (igual que antes, sin cambios) ═══ */
     @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap');
     :root {
       --bg: #0b0d11;
@@ -67,9 +68,7 @@
       transition: transform 0.3s ease;
       z-index: 100;
     }
-    .sidebar.open {
-      transform: translateX(0);
-    }
+    .sidebar.open { transform: translateX(0); }
     .close-btn {
       position: absolute;
       top: 1rem;
@@ -131,6 +130,7 @@
       justify-content: center;
     }
     .date-nav button:hover { background: var(--s1); border-color: var(--bds); }
+    .date-nav button:disabled { opacity: 0.3; cursor: default; }
     .date-nav .date-label {
       font-size: 1.3rem;
       font-weight: 600;
@@ -189,11 +189,9 @@
       font-size: 1rem;
       padding: 3rem 0;
     }
+    .err-box { background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.2); border-radius: var(--r); padding: 0.875rem 1rem; color: var(--red); font-size: 0.85rem; }
 
-    /* Analysis sidebar content (same as before but adapted) */
-    /* We reuse all previous market cards, stat cards etc. */
-    /* I'll just copy them from the original code, but ensure they fit inside sidebar */
-    /* (The original style definitions already exist, so I'll append them) */
+    /* (Todos los demás estilos de market-card, stat-card, etc., se mantienen igual; los incluyo por completitud pero están copiados del código anterior) */
     .market-card, .stat-card {
       background: var(--s1);
       border: 1px solid var(--bd);
@@ -280,7 +278,6 @@
 </head>
 <body>
 <div class="shell">
-  <!-- Contenido principal -->
   <div class="main-content" id="mainContent">
     <div class="hdr">
       <div class="hdr-left">
@@ -290,93 +287,117 @@
       <div style="font-size:0.9rem; color:var(--td)" id="todayDate"></div>
     </div>
 
-    <!-- Navegador de fecha -->
-    <div class="date-nav">
-      <button onclick="changeDate(-1)">←</button>
+    <div class="date-nav" id="dateNav">
+      <button id="prevBtn" onclick="changeDate(-1)">←</button>
       <div>
         <span class="date-label" id="dateDisplay">Hoy</span>
         <span class="date-sub" id="dateSub"></span>
       </div>
-      <button onclick="changeDate(1)">→</button>
+      <button id="nextBtn" onclick="changeDate(1)">→</button>
     </div>
 
-    <!-- Stack de partidos -->
     <div id="eventsStack" class="events-stack">
       <div class="loading-state">Cargando partidos…</div>
     </div>
   </div>
 
-  <!-- Sidebar de análisis -->
   <div class="sidebar" id="sidebar">
     <button class="close-btn" onclick="closeSidebar()">&times;</button>
     <div id="sidebarContent"></div>
   </div>
-
-  <!-- Overlay -->
   <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 </div>
 
 <script>
 const $ = id => document.getElementById(id);
 
-// ──── UTILES ────
 function fmtTime(iso) {
   return new Date(iso).toLocaleTimeString('es', { hour:'2-digit', minute:'2-digit', timeZone:'America/Panama' });
 }
 function fmtDate(iso) {
   return new Date(iso).toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long', timeZone:'America/Panama' });
 }
-function pColor(p) { return p >= 60 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)'; }
-function barColor(p) { return p >= 65 ? '#4ade80' : p >= 45 ? '#fbbf24' : '#f87171'; }
 
 $('todayDate').innerText = new Date().toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'America/Panama' });
 
-// ──── ESTADO ────
-let currentDate = new Date(); // Date object, sin hora
-let currentEvents = [];
+// ──── Estado global ────
+let allEventsByDate = {};   // { 'YYYY-MM-DD': [...events] }
+let sortedDates = [];       // ['2026-06-20', '2026-06-21', ...]
+let currentIndex = 0;       // índice en sortedDates
 let currentId = null, currentData = null, currentTab = 'resultado';
 
-// ──── NAVEGACIÓN POR FECHA ────
-function updateDateLabel() {
+// ──── Carga inicial desde /api/today ────
+async function loadInitialEvents() {
+  try {
+    const res = await fetch('/api/today');
+    const data = await res.json();
+    if (data.error) throw new Error(data.error);
+
+    // Agrupar eventos por fecha (usando event_date, recortado a YYYY-MM-DD)
+    const events = [...(data.today || []), ...(data.tomorrow || [])];
+    const grouped = {};
+    events.forEach(e => {
+      const dateStr = e.event_date?.slice(0,10);
+      if (!dateStr) return;
+      if (!grouped[dateStr]) grouped[dateStr] = [];
+      grouped[dateStr].push(e);
+    });
+
+    allEventsByDate = grouped;
+    sortedDates = Object.keys(grouped).sort();
+
+    if (sortedDates.length === 0) {
+      $('eventsStack').innerHTML = '<div class="empty-state">No hay partidos programados.</div>';
+      $('prevBtn').disabled = true;
+      $('nextBtn').disabled = true;
+      return;
+    }
+
+    // Posicionar el índice en la fecha más cercana a hoy
+    const todayStr = new Date().toISOString().slice(0,10);
+    currentIndex = sortedDates.indexOf(todayStr);
+    if (currentIndex === -1) currentIndex = 0; // si hoy no está, empezar en la primera
+
+    updateDateUI();
+    renderEventsForCurrentDate();
+  } catch(e) {
+    $('eventsStack').innerHTML = `<div class="err-box">❌ ${e.message}</div>`;
+  }
+}
+
+// ──── Navegación de fecha ────
+function changeDate(offset) {
+  const newIndex = currentIndex + offset;
+  if (newIndex < 0 || newIndex >= sortedDates.length) return;
+  currentIndex = newIndex;
+  updateDateUI();
+  renderEventsForCurrentDate();
+}
+
+function updateDateUI() {
+  const dateStr = sortedDates[currentIndex];
+  const date = new Date(dateStr + 'T12:00:00'); // mediodía para evitar desfases
   const today = new Date(); today.setHours(0,0,0,0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
-  const day = currentDate;
-  const dayStart = new Date(day); dayStart.setHours(0,0,0,0);
-  if (dayStart.getTime() === today.getTime()) {
+
+  if (date.toDateString() === today.toDateString()) {
     $('dateDisplay').innerText = 'Hoy';
-    $('dateSub').innerText = day.toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' });
-  } else if (dayStart.getTime() === tomorrow.getTime()) {
+  } else if (date.toDateString() === tomorrow.toDateString()) {
     $('dateDisplay').innerText = 'Mañana';
-    $('dateSub').innerText = day.toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' });
   } else {
-    $('dateDisplay').innerText = day.toLocaleDateString('es', { weekday:'short', day:'numeric', month:'short' });
-    $('dateSub').innerText = '';
+    $('dateDisplay').innerText = date.toLocaleDateString('es', { weekday:'short', day:'numeric', month:'short' });
   }
+  $('dateSub').innerText = date.toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' });
+
+  $('prevBtn').disabled = (currentIndex === 0);
+  $('nextBtn').disabled = (currentIndex === sortedDates.length - 1);
 }
 
-function changeDate(offset) {
-  currentDate.setDate(currentDate.getDate() + offset);
-  updateDateLabel();
-  loadEventsForDate(currentDate);
-}
-
-async function loadEventsForDate(date) {
-  const dateStr = date.toISOString().slice(0,10);
-  $('eventsStack').innerHTML = '<div class="loading-state">Cargando…</div>';
-  try {
-    const res = await fetch(`/api/events?date=${dateStr}`);
-    const data = await res.json();
-    if (!Array.isArray(data)) throw new Error('Formato inválido');
-    currentEvents = data;
-    renderEventStack(data);
-  } catch(e) {
-    $('eventsStack').innerHTML = `<div class="empty-state">❌ Error al cargar: ${e.message}</div>`;
-  }
-}
-
-function renderEventStack(events) {
-  if (!events.length) {
-    $('eventsStack').innerHTML = '<div class="empty-state">No hay partidos para esta fecha.</div>';
+function renderEventsForCurrentDate() {
+  const dateStr = sortedDates[currentIndex];
+  const events = allEventsByDate[dateStr] || [];
+  if (events.length === 0) {
+    $('eventsStack').innerHTML = '<div class="empty-state">No hay partidos en esta fecha.</div>';
     return;
   }
   const html = events.map(e => {
@@ -397,20 +418,18 @@ function renderEventStack(events) {
   $('eventsStack').innerHTML = html;
 }
 
-// ──── SIDEBAR ────
+// ──── Sidebar ────
 function openSidebar() {
   document.querySelector('.main-content').classList.add('sidebar-open');
   $('sidebar').classList.add('open');
   $('overlay').classList.add('active');
 }
-
 function closeSidebar() {
   document.querySelector('.main-content').classList.remove('sidebar-open');
   $('sidebar').classList.remove('open');
   $('overlay').classList.remove('active');
   currentId = null;
 }
-
 async function openAnalysis(id) {
   if (currentId === id) return openSidebar();
   currentId = id;
@@ -427,7 +446,6 @@ async function openAnalysis(id) {
     $('sidebarContent').innerHTML = `<div class="err-box">❌ ${e.message}</div>`;
   }
 }
-
 function renderAnalysisSidebar(d) {
   const tabs = [
     { id:'resultado',  label:'Resultado' },
@@ -440,7 +458,7 @@ function renderAnalysisSidebar(d) {
     { id:'alineacion', label:'Alineaciones' },
     { id:'h2h',        label:'H2H' },
   ];
-  const tabsHTML = tabs.map(t => 
+  const tabsHTML = tabs.map(t =>
     `<div class="tab ${t.id===currentTab?'active':''}" data-tab="${t.id}" onclick="switchSidebarTab('${t.id}')">${t.label}</div>`
   ).join('');
 
@@ -452,7 +470,6 @@ function renderAnalysisSidebar(d) {
       <div id="tabContentSidebar">${renderTabContent(currentTab, d)}</div>
     </div>`;
 }
-
 function switchSidebarTab(tab) {
   currentTab = tab;
   document.querySelectorAll('#sidebarContent .tab').forEach(t => {
@@ -461,9 +478,7 @@ function switchSidebarTab(tab) {
   $('tabContentSidebar').innerHTML = renderTabContent(tab, currentData);
 }
 
-// ──── RENDERIZADORES DE PESTAÑAS (copian la lógica anterior pero sin cambios) ────
-// (Mantengo todas las funciones renderResultado, renderGoles, ... tal cual las tenías)
-// Solo añado un pequeño ajuste para que funcionen con currentData como antes.
+// ──── Funciones de renderizado de pestañas (copiadas exactamente del código anterior) ────
 function renderTabContent(tab, d) {
   switch(tab) {
     case 'resultado':  return renderResultado(d);
@@ -479,7 +494,6 @@ function renderTabContent(tab, d) {
   }
 }
 
-// (Copio íntegramente las funciones desde el código original, sin modificaciones)
 function renderScoreboard(ev, odds) {
   const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(ev.status);
   const isFin  = ev.status === 'finished';
@@ -520,10 +534,7 @@ function renderMeta(meta) {
     </div>`;
 }
 
-// Incluyo las funciones de renderizado de pestañas SIN cambios, solo copiadas del código original.
-// (No las reproduzco aquí por brevedad, pero están en el mensaje anterior; se deben pegar íntegramente
-//  desde el código original provisto. Mantienen exactamente la misma lógica.)
-
+// ──── RENDERERS DE PESTAÑAS (COPIADOS EXACTOS DEL CÓDIGO ORIGINAL) ────
 function renderResultado({ event:ev, homeStats:hs, awayStats:as, prediction:pred }) {
   const mr = pred?.markets?.match_result || {};
   const hP = mr.prob_home || null;
@@ -587,12 +598,264 @@ function renderResultado({ event:ev, homeStats:hs, awayStats:as, prediction:pred
     </div>`;
 }
 
-// (El resto de funciones: renderGoles, renderCorners, renderTarjetas, renderOffsides, renderPrediccion, renderEquipos, renderAlineacion, renderH2H
-//  se copian exactamente iguales desde el código HTML anterior, sin ninguna modificación. Por brevedad no las duplico aquí, pero debes pegarlas.)
+function renderGoles({ event:ev, homeStats:hs, awayStats:as, prediction:pred, odds }) {
+  if (!hs || !as) return '<div class="no-data">Sin datos suficientes.</div>';
+  const hCtx = hs.home_ctx || hs;
+  const aCtx = as.away_ctx || as;
+  const avgGoals = ((hCtx.avg_total||hs.avg_total||0) + (aCtx.avg_total||as.avg_total||0)) / 2;
+  const xgTotal = (pred?.markets?.expected_goals?.home||0) + (pred?.markets?.expected_goals?.away||0);
+  const o15 = Math.round(((hCtx.over15_pct||hs.over15_pct||0) + (aCtx.over15_pct||as.over15_pct||0)) / 2);
+  const o25 = Math.round(((hCtx.over25_pct||hs.over25_pct||0) + (aCtx.over25_pct||as.over25_pct||0)) / 2);
+  const o35 = Math.round(((hCtx.over35_pct||hs.over35_pct||0) + (aCtx.over35_pct||as.over35_pct||0)) / 2);
+  const btts = Math.round(((hCtx.btts_pct||hs.btts_pct||0) + (aCtx.btts_pct||as.btts_pct||0)) / 2);
+  const recLine = avgGoals > 3 ? '2.5' : avgGoals > 2 ? '2.5' : '1.5';
+  const lines = [
+    { label:'Over 1.5', prob:o15, odds: odds?.over15 },
+    { label:'Over 2.5', prob:o25, odds: odds?.over25 },
+    { label:'Over 3.5', prob:o35, odds: null },
+    { label:'BTTS',     prob:btts, odds: odds?.btts_yes },
+  ];
+  return `
+    <div class="market-card highlighted">
+      <div class="mc-header">
+        <div class="mc-icon">⚽</div>
+        <div><div class="mc-title">Over / Under goles</div>
+        <div class="mc-sub">Prom. histórico ${avgGoals.toFixed(1)} goles/partido · xG combinado ${xgTotal.toFixed(2)}</div></div>
+      </div>
+      ${lines.map(l => `
+        <div class="bar-row">
+          <span class="bar-label">${l.label}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${l.prob}%;background:${barColor(l.prob)}"></div></div>
+          <span class="bar-val">${l.prob}%</span>
+          ${l.odds ? `<span style="font-size:11px;color:var(--td);min-width:36px;text-align:right">${l.odds.toFixed(2)}</span>` : ''}
+        </div>`).join('')}
+      <div class="rec-line">
+        <div class="rec-dot"></div>
+        <span>Línea recomendada: <b>Over ${recLine}</b> — promedio ${avgGoals.toFixed(1)} goles</span>
+      </div>
+    </div>`;
+}
 
-// ──── INICIO ────
-updateDateLabel();
-loadEventsForDate(new Date());
+function renderCorners({ event:ev, histStats, homeHistStats, awayHistStats }) {
+  const hc = homeHistStats?.corners;
+  const ac = awayHistStats?.corners;
+  const combined = histStats?.corners;
+  if (!combined && !hc && !ac) return '<div class="no-data">Sin datos de corners históricos.</div>';
+  const avg = combined?.avg || ((hc?.avg||0) + (ac?.avg||0)) / 2;
+  const recLine = combined?.rec_line || hc?.rec_line || 9.5;
+  const lines = combined?.lines || hc?.lines || [];
+  return `
+    <div class="market-card highlighted">
+      <div class="mc-header">
+        <div class="mc-icon">🚩</div>
+        <div><div class="mc-title">Over / Under corners</div>
+        <div class="mc-sub">${ev.home_team} prom. ${hc?.avg||'N/D'} · ${ev.away_team} prom. ${ac?.avg||'N/D'} · Total esperado ${avg.toFixed(1)}</div></div>
+      </div>
+      ${lines.map(l => `
+        <div class="bar-row">
+          <span class="bar-label">Over ${l.line}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${l.over_pct}%;background:${barColor(l.over_pct)}"></div></div>
+          <span class="bar-val">${l.over_pct}%</span>
+          <span style="font-size:11px;color:var(--td);min-width:60px;text-align:right">Under ${l.under_pct}%</span>
+        </div>`).join('')}
+      <div class="rec-line"><div class="rec-dot"></div><span>Línea recomendada: <b>Over ${recLine}</b></span></div>
+    </div>`;
+}
+
+function renderTarjetas({ event:ev, histStats, homeHistStats, awayHistStats }) {
+  const hc = homeHistStats?.cards;
+  const ac = awayHistStats?.cards;
+  const combined = histStats?.cards;
+  if (!combined && !hc && !ac) return '<div class="no-data">Sin datos de tarjetas.</div>';
+  const avg = combined?.avg || ((hc?.avg||0) + (ac?.avg||0)) / 2;
+  const recLine = combined?.rec_line || hc?.rec_line || 3.5;
+  const lines = combined?.lines || hc?.lines || [];
+  return `
+    <div class="market-card highlighted">
+      <div class="mc-header">
+        <div class="mc-icon">🟨</div>
+        <div><div class="mc-title">Over / Under tarjetas amarillas</div>
+        <div class="mc-sub">${ev.home_team} prom. ${hc?.avg||'N/D'} · ${ev.away_team} prom. ${ac?.avg||'N/D'} · Total ${avg.toFixed(1)}</div></div>
+      </div>
+      ${lines.map(l => `
+        <div class="bar-row">
+          <span class="bar-label">Over ${l.line}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${l.over_pct}%;background:${barColor(l.over_pct)}"></div></div>
+          <span class="bar-val">${l.over_pct}%</span>
+          <span style="font-size:11px;color:var(--td);min-width:60px;text-align:right">Under ${l.under_pct}%</span>
+        </div>`).join('')}
+      <div class="rec-line"><div class="rec-dot"></div><span>Línea recomendada: <b>Over ${recLine}</b></span></div>
+    </div>`;
+}
+
+function renderOffsides({ event:ev, histStats, homeHistStats, awayHistStats }) {
+  const hc = homeHistStats?.offsides;
+  const ac = awayHistStats?.offsides;
+  const combined = histStats?.offsides;
+  if (!combined && !hc && !ac) return '<div class="no-data">Sin datos de fueras de lugar.</div>';
+  const avg = combined?.avg || ((hc?.avg||0) + (ac?.avg||0)) / 2;
+  const recLine = combined?.rec_line || hc?.rec_line || 3.5;
+  const lines = combined?.lines || hc?.lines || [];
+  return `
+    <div class="market-card highlighted">
+      <div class="mc-header">
+        <div class="mc-icon">🚦</div>
+        <div><div class="mc-title">Over / Under fueras de lugar</div>
+        <div class="mc-sub">${ev.home_team} prom. ${hc?.avg||'N/D'} · ${ev.away_team} prom. ${ac?.avg||'N/D'} · Total ${avg.toFixed(1)}</div></div>
+      </div>
+      ${lines.map(l => `
+        <div class="bar-row">
+          <span class="bar-label">Over ${l.line}</span>
+          <div class="bar-track"><div class="bar-fill" style="width:${l.over_pct}%;background:${barColor(l.over_pct)}"></div></div>
+          <span class="bar-val">${l.over_pct}%</span>
+          <span style="font-size:11px;color:var(--td);min-width:60px;text-align:right">Under ${l.under_pct}%</span>
+        </div>`).join('')}
+      <div class="rec-line"><div class="rec-dot"></div><span>Línea recomendada: <b>Over ${recLine}</b></span></div>
+    </div>`;
+}
+
+function renderPrediccion({ event:ev, prediction:pred, histStats, homeStats:hs, awayStats:as }) {
+  if (!pred) return '<div class="no-data">Sin predicción ML.</div>';
+  const mr = pred.markets?.match_result || {};
+  const eg = pred.markets?.expected_goals || {};
+  const rec = pred.recommendations || {};
+  const winner = rec.favorite === 'H' ? ev.home_team : rec.favorite === 'A' ? ev.away_team : 'Empate';
+  const winnerProb = rec.favorite_prob != null ? rec.favorite_prob.toFixed(1) : '—';
+  const xgH = eg.home || null;
+  const xgA = eg.away || null;
+  const xgTotal = xgH != null && xgA != null ? (xgH + xgA).toFixed(2) : null;
+  const cornersEst = histStats?.corners?.avg || null;
+  const cardsEst   = histStats?.cards?.avg   || null;
+  const offsidesEst= histStats?.offsides?.avg || null;
+  return `
+    <div class="pred-banner">
+      <div style="font-size:0.75rem;color:var(--tm);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em">Resultado más probable</div>
+      <div class="pred-result">${winner}</div>
+      <div class="pred-sub">Probabilidad ${winnerProb}% · Confianza ${Math.round((pred.model?.confidence||0)*100)}%</div>
+    </div>
+    <div class="pred-numbers">
+      <div class="pn-box">
+        <div class="pn-label">Goles esperados</div>
+        <div class="pn-val">${xgTotal || '—'}</div>
+        <div class="pn-unit">total xG</div>
+        ${xgH!=null?`<div class="pn-range">${ev.home_team.split(' ')[0]} ${xgH.toFixed(2)} · ${ev.away_team.split(' ')[0]} ${xgA.toFixed(2)}</div>`:''}
+      </div>
+      <div class="pn-box">
+        <div class="pn-label">Corners esperados</div>
+        <div class="pn-val">${cornersEst != null ? cornersEst.toFixed(1) : '—'}</div>
+        <div class="pn-unit">corners est.</div>
+      </div>
+      <div class="pn-box">
+        <div class="pn-label">Tarjetas esperadas</div>
+        <div class="pn-val">${cardsEst != null ? cardsEst.toFixed(1) : '—'}</div>
+        <div class="pn-unit">amarillas est.</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="sec-title">Probabilidades ML</div>
+      <div class="bar-row"><span class="bar-label">${ev.home_team}</span><div class="bar-track"><div class="bar-fill" style="width:${mr.prob_home||0}%;background:var(--blue)"></div></div><span class="bar-val">${mr.prob_home?.toFixed(1)||'—'}%</span></div>
+      <div class="bar-row"><span class="bar-label">Empate</span><div class="bar-track"><div class="bar-fill" style="width:${mr.prob_draw||0}%;background:var(--yellow)"></div></div><span class="bar-val">${mr.prob_draw?.toFixed(1)||'—'}%</span></div>
+      <div class="bar-row"><span class="bar-label">${ev.away_team}</span><div class="bar-track"><div class="bar-fill" style="width:${mr.prob_away||0}%;background:var(--purple)"></div></div><span class="bar-val">${mr.prob_away?.toFixed(1)||'—'}%</span></div>
+    </div>`;
+}
+
+function renderEquipos({ event:ev, homeStats:hs, awayStats:as }) {
+  if (!hs && !as) return '<div class="no-data">Sin datos históricos.</div>';
+  function teamCard(stats, name, ctx) {
+    if (!stats) return `<div class="stat-card"><div class="sec-title">${name}</div><div class="no-data">Sin datos.</div></div>`;
+    const ctxStats = ctx === 'home' ? (stats.home_ctx||stats) : (stats.away_ctx||stats);
+    const ctxLabel = ctx === 'home' ? 'Como local' : 'Como visitante';
+    const formHTML = stats.form.map(r => `<div class="dot dot-${r}">${r}</div>`).join('');
+    const recent = stats.recent.map(g => {
+      const res = g.gf > g.ga ? 'W' : g.gf < g.ga ? 'L' : 'D';
+      return `<div class="recent-game">
+        <div class="rg-res dot-${res}">${res}</div>
+        <div class="rg-opp">${g.home?'vs':'@'} ${g.opponent}</div>
+        <div class="rg-score">${g.gf}–${g.ga}</div>
+        <div class="rg-date">${g.date}</div>
+      </div>`;
+    }).join('');
+    return `
+      <div class="stat-card">
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#fff;margin-bottom:.625rem">${name}</div>
+        <div class="form-dots">${formHTML}</div>
+        <div style="font-size:10px;color:var(--purple);margin-bottom:.5rem;text-transform:uppercase;letter-spacing:.07em">${ctxLabel} (${ctxStats.n||0} partidos)</div>
+        <div class="stat-row"><span class="sk">Victorias</span><span style="font-weight:500;color:var(--green)">${ctxStats.win_pct||stats.win_pct}%</span></div>
+        <div class="stat-row"><span class="sk">Empates</span><span style="font-weight:500;color:var(--yellow)">${ctxStats.draw_pct||stats.draw_pct}%</span></div>
+        <div class="stat-row"><span class="sk">Goles/partido</span><span style="font-weight:500">${ctxStats.avg_gf||stats.avg_gf}</span></div>
+        <div class="stat-row"><span class="sk">Goles recibidos/partido</span><span style="font-weight:500">${ctxStats.avg_ga||stats.avg_ga}</span></div>
+        <div class="stat-row"><span class="sk">BTTS</span><span style="font-weight:500">${ctxStats.btts_pct||stats.btts_pct}%</span></div>
+        <div class="stat-row"><span class="sk">Over 2.5</span><span style="font-weight:500">${ctxStats.over25_pct||stats.over25_pct}%</span></div>
+        <div class="stat-row"><span class="sk">Portería a 0</span><span style="font-weight:500">${ctxStats.clean_sheet_pct||stats.clean_sheet_pct}%</span></div>
+        <div style="margin-top:.875rem"><div class="sc-title">Últimos partidos</div>${recent}</div>
+      </div>`;
+  }
+  return `<div class="g2">${teamCard(hs, ev.home_team, 'home')}${teamCard(as, ev.away_team, 'away')}</div>`;
+}
+
+function renderH2H({ event:ev, h2h }) {
+  if (!h2h || !h2h.total_matches) return '<div class="no-data">Sin historial H2H.</div>';
+  const hW = h2h.home_wins||0, aW = h2h.away_wins||0, dr = h2h.draws||0;
+  const total = hW + aW + dr || 1;
+  return `
+    <div class="stat-card">
+      <div class="sec-title">Historial directo</div>
+      <div class="h2h-3">
+        <div><div class="h2h-val" style="color:var(--blue)">${hW}</div><div class="h2h-lbl">${ev.home_team}</div></div>
+        <div><div class="h2h-val" style="color:var(--yellow)">${dr}</div><div class="h2h-lbl">Empates</div></div>
+        <div><div class="h2h-val" style="color:var(--purple)">${aW}</div><div class="h2h-lbl">${ev.away_team}</div></div>
+      </div>
+      <div class="prob-track" style="height:6px;margin-bottom:.875rem">
+        <div class="prob-fill" style="width:${Math.round(hW/total*100)}%;background:var(--blue)"></div>
+        <div class="prob-fill" style="width:${Math.round(dr/total*100)}%;background:var(--yellow)"></div>
+        <div class="prob-fill" style="width:${Math.round(aW/total*100)}%;background:var(--purple)"></div>
+      </div>
+      <div style="display:flex;gap:1rem;flex-wrap:wrap;font-size:0.75rem">
+        <span style="color:var(--td)">Total: <b style="color:var(--t)">${h2h.total_matches}</b></span>
+        ${h2h.avg_total_goals!=null?`<span style="color:var(--td)">Goles/partido: <b style="color:var(--t)">${h2h.avg_total_goals?.toFixed(1)}</b></span>`:''}
+        ${h2h.btts_pct!=null?`<span style="color:var(--td)">BTTS: <b style="color:var(--t)">${Math.round(h2h.btts_pct*100)}%</b></span>`:''}
+        ${h2h.over_25_pct!=null?`<span style="color:var(--td)">Over 2.5: <b style="color:var(--t)">${Math.round(h2h.over_25_pct*100)}%</b></span>`:''}
+      </div>
+    </div>`;
+}
+
+function renderAlineacion({ event:ev, lineups }) {
+  if (!lineups || lineups.lineup_status === 'unavailable' || !lineups.lineups)
+    return '<div class="no-data">Alineaciones no disponibles.</div>';
+  const home = lineups.lineups?.home, away = lineups.lineups?.away;
+  const sl = {confirmed:'✅ Confirmada', predicted:'🤖 Predicha IA'}[lineups.lineup_status]||lineups.lineup_status;
+  function pl(side) {
+    const players = side?.players||[];
+    if (!players.length) return '<div class="no-data">Sin datos</div>';
+    return players.map(p => `
+      <div class="player-row">
+        <span class="p-num">${p.jersey_number||''}</span>
+        <span class="p-name">${p.name}</span>
+        <span class="p-pos">${p.position}</span>
+        ${p.ai_score?`<span class="p-score">${(p.ai_score*100).toFixed(0)}</span>`:''}
+      </div>`).join('');
+  }
+  const unavH = lineups.unavailable_players?.home||[];
+  const unavA = lineups.unavailable_players?.away||[];
+  return `
+    <div class="g2">
+      <div class="stat-card">
+        <div class="sec-title">${ev.home_team} — ${sl}</div>
+        ${home?.formation?`<div style="font-size:0.75rem;color:var(--tm);margin-bottom:.5rem">Formación: <b>${home.formation}</b></div>`:''}
+        ${pl(home)}
+        ${unavH.length?`<div style="margin-top:.75rem"><div style="font-size:0.7rem;color:var(--red);margin-bottom:4px">Bajas</div>${unavH.map(p=>`<div style="font-size:0.75rem;color:var(--td);padding:2px 0">❌ ${p.name} — ${p.reason}</div>`).join('')}</div>`:''}
+      </div>
+      <div class="stat-card">
+        <div class="sec-title">${ev.away_team} — ${sl}</div>
+        ${away?.formation?`<div style="font-size:0.75rem;color:var(--tm);margin-bottom:.5rem">Formación: <b>${away.formation}</b></div>`:''}
+        ${pl(away)}
+        ${unavA.length?`<div style="margin-top:.75rem"><div style="font-size:0.7rem;color:var(--red);margin-bottom:4px">Bajas</div>${unavA.map(p=>`<div style="font-size:0.75rem;color:var(--td);padding:2px 0">❌ ${p.name} — ${p.reason}</div>`).join('')}</div>`:''}
+      </div>
+    </div>`;
+}
+
+// ──── Iniciar ────
+loadInitialEvents();
 </script>
 </body>
 </html>
