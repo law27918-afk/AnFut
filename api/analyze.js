@@ -1,10 +1,29 @@
 import { bsd, safe } from './_bsd.js';
 
+// ═══════════════════════════════════════════════════════════
+// CONFIGURACIÓN — Competiciones siempre neutrales (Mundial, etc.)
+// ═══════════════════════════════════════════════════════════
+const NEUTRAL_COMPETITIONS = [
+  // Ejemplo: ID de la FIFA World Cup. Cambia según tu API.
+  1,
+  // Añade aquí otros IDs de torneos en sede neutral (Eurocopa, Copa América, etc.)
+];
+
 // ─────────────────────────────────────────────────────────────
-// WILSON CI 95%
+// HELPERS
 // ─────────────────────────────────────────────────────────────
+
+/** ¿El partido se juega en cancha neutral? (por indicador o por torneo) */
+function isNeutralVenue(event) {
+  if (!event) return false;
+  if (event.is_neutral_ground) return true;
+  if (event.league_id && NEUTRAL_COMPETITIONS.includes(event.league_id)) return true;
+  return false;
+}
+
+/** Intervalo de confianza Wilson al 95%. Retorna [min%, max%] o null si n=0 */
 function wilsonCI(k, n) {
-  if (!n) return [0, 100];
+  if (!n) return null;
   const z = 1.96, p = k / n;
   const d = 1 + z * z / n;
   const c = (p + z * z / (2 * n)) / d;
@@ -12,13 +31,22 @@ function wilsonCI(k, n) {
   return [Math.max(0, Math.round((c - s) * 100)), Math.min(100, Math.round((c + s) * 100))];
 }
 
+/** Línea recomendada: la línea estándar más cercana al promedio */
+function recLine(avg, lines) {
+  if (!lines || !lines.length) return null;
+  return lines.reduce((best, l) =>
+    Math.abs(l - avg) < Math.abs(best - avg) ? l : best
+  , lines[0]);
+}
+
 // ─────────────────────────────────────────────────────────────
 // STATS DE RESULTADOS — separadas por contexto home/away
 // ─────────────────────────────────────────────────────────────
 function calcStats(fixtures, teamId) {
-  const finished = (fixtures || []).filter(f =>
-    f.status === 'finished' && f.home_score !== null && f.away_score !== null
-  );
+  const finished = (fixtures || [])
+    .filter(f => f.status === 'finished' && f.home_score !== null && f.away_score !== null)
+    // Ordenar por fecha descendente (más reciente primero)
+    .sort((a, b) => (b.event_date || '').localeCompare(a.event_date || ''));
 
   const all  = finished.slice(0, 15);
   const home = finished.filter(f => f.home_team_id === teamId).slice(0, 10);
@@ -28,8 +56,8 @@ function calcStats(fixtures, teamId) {
 
   function agg(games) {
     if (!games.length) return null;
-    let wins=0, draws=0, losses=0, gf=0, ga=0;
-    let btts=0, o15=0, o25=0, o35=0, cs=0, formPts=0;
+    let wins = 0, draws = 0, losses = 0, gf = 0, ga = 0;
+    let btts = 0, o15 = 0, o25 = 0, o35 = 0, cs = 0, formPts = 0;
     games.forEach(f => {
       const isH = f.home_team_id === teamId;
       const scored  = isH ? f.home_score : f.away_score;
@@ -87,14 +115,12 @@ function calcStats(fixtures, teamId) {
         date: f.event_date?.split('T')[0],
       };
     }),
-    // IDs de partidos terminados para buscar stats históricas
     finishedIds: finished.slice(0, 6).map(f => f.id),
   };
 }
 
 // ─────────────────────────────────────────────────────────────
 // STATS HISTÓRICAS (corners, tarjetas, offsides)
-// Llama /events/{id}/stats/ para cada partido pasado en paralelo
 // ─────────────────────────────────────────────────────────────
 async function fetchHistoricalStats(eventIds, teamId) {
   if (!eventIds?.length) return null;
@@ -103,32 +129,32 @@ async function fetchHistoricalStats(eventIds, teamId) {
     eventIds.map(id => safe(bsd(`/events/${id}/stats/`)))
   );
 
-  let corners=0, yellows=0, reds=0, offsides=0, count=0;
-  let cornersList=[], yellowsList=[], offsidessList=[];
+  let corners = 0, yellows = 0, reds = 0, offsides = 0, count = 0;
+  let cornersList = [], yellowsList = [], offsidessList = [];
 
-  results.forEach((stats, i) => {
+  results.forEach(stats => {
     if (!stats) return;
-
-    // La API devuelve { stats: { home: {...}, away: {...} } }
     const home = stats.stats?.home || stats.home || {};
     const away = stats.stats?.away || stats.away || {};
 
-    // Campo correcto: corner_kicks (no corners)
+    // Contamos todos los partidos que devuelven datos, aunque los valores sean 0
+    // (sólo ignoramos respuestas completamente vacías)
+    if (Object.keys(home).length === 0 && Object.keys(away).length === 0) return;
+
     const totalCorners  = (home.corner_kicks || 0) + (away.corner_kicks || 0);
     const totalYellows  = (home.yellow_cards || 0) + (away.yellow_cards || 0);
     const totalReds     = (home.red_cards    || 0) + (away.red_cards    || 0);
     const totalOffsides = (home.offsides     || 0) + (away.offsides     || 0);
 
-    if (totalYellows > 0 || totalOffsides > 0 || totalCorners > 0) {
-      corners  += totalCorners;
-      yellows  += totalYellows;
-      reds     += totalReds;
-      offsides += totalOffsides;
-      count++;
-      cornersList.push(totalCorners);
-      yellowsList.push(totalYellows);
-      offsidessList.push(totalOffsides);
-    }
+    corners  += totalCorners;
+    yellows  += totalYellows;
+    reds     += totalReds;
+    offsides += totalOffsides;
+    count++;
+
+    cornersList.push(totalCorners);
+    yellowsList.push(totalYellows);
+    offsidessList.push(totalOffsides);
   });
 
   if (!count) return null;
@@ -137,20 +163,14 @@ async function fetchHistoricalStats(eventIds, teamId) {
   const avgYellows  = +(yellows  / count).toFixed(1);
   const avgOffsides = +(offsides / count).toFixed(1);
 
-  // Calcula % de partidos Over para cada línea
   function overPct(list, line) {
     if (!list.length) return 0;
     return Math.round(list.filter(v => v > line).length / list.length * 100);
   }
 
-  // Línea recomendada: la línea estándar más cercana al promedio
-  function recLine(avg, lines) {
-    return lines.reduce((best, l) => Math.abs(l - avg) < Math.abs(best - avg) ? l : best);
-  }
-
-  const cornerLines  = [7.5, 8.5, 9.5, 10.5, 11.5, 12.5];
-  const cardLines    = [1.5, 2.5, 3.5, 4.5, 5.5];
-  const offsidesLines= [1.5, 2.5, 3.5, 4.5, 5.5];
+  const cornerLines   = [7.5, 8.5, 9.5, 10.5, 11.5, 12.5];
+  const cardLines     = [1.5, 2.5, 3.5, 4.5, 5.5];
+  const offsidesLines = [1.5, 2.5, 3.5, 4.5, 5.5];
 
   return {
     matches: count,
@@ -284,8 +304,10 @@ function generateBets(homeStats, awayStats, odds, prediction, lineups, event, h2
   const sfH = homeStats.sample_factor;
   const sfA = awayStats.sample_factor;
 
-  const hCtx = homeStats.home_ctx || homeStats;
-  const aCtx = awayStats.away_ctx || awayStats;
+  // ═══ DETERMINAR SI ES CANCHA NEUTRAL ═══
+  const isNeutral = isNeutralVenue(event);
+  const hCtx = isNeutral ? homeStats : (homeStats.home_ctx || homeStats);
+  const aCtx = isNeutral ? awayStats : (awayStats.away_ctx || awayStats);
 
   // ── BTTS ──
   const btts_form = ((hCtx.btts_pct ?? homeStats.btts_pct) + (aCtx.btts_pct ?? awayStats.btts_pct)) / 2;
@@ -328,7 +350,7 @@ function generateBets(homeStats, awayStats, odds, prediction, lineups, event, h2
 
   const xgTotal = (prediction?.markets?.expected_goals?.home || 0) + (prediction?.markets?.expected_goals?.away || 0);
   const avgGoals = ((homeStats.avg_total || homeStats.avg_total_goals || 0) + (awayStats.avg_total || awayStats.avg_total_goals || 0)) / 2;
-  const recLine = xgTotal > 0
+  const recGoalLine = xgTotal > 0
     ? (xgTotal > 3 ? 'Over 2.5' : xgTotal > 2 ? 'Over 1.5' : 'Under 1.5')
     : (avgGoals > 3 ? 'Over 2.5' : avgGoals > 2 ? 'Over 1.5' : 'Under 1.5');
 
@@ -341,7 +363,7 @@ function generateBets(homeStats, awayStats, odds, prediction, lineups, event, h2
       { label: 'Over 3.5', prob: o35_prob, odds: null, ev: null },
       { label: 'BTTS',     prob: btts_prob, odds: odds?.btts_yes || null, ev: btts_ev?.ev ?? null },
     ],
-    rec_line: recLine,
+    rec_line: recGoalLine,
     xg_home: prediction?.markets?.expected_goals?.home,
     xg_away: prediction?.markets?.expected_goals?.away,
     avg_goals: +avgGoals.toFixed(1),
@@ -405,7 +427,52 @@ function generateBets(homeStats, awayStats, odds, prediction, lineups, event, h2
 }
 
 // ─────────────────────────────────────────────────────────────
-// HANDLER
+// COMBINA STATS HISTÓRICAS DE AMBOS EQUIPOS
+// ─────────────────────────────────────────────────────────────
+function combineHistStats(homeHist, awayHist) {
+  if (!homeHist && !awayHist) return null;
+  const h = homeHist || awayHist;
+  const a = awayHist || homeHist;
+
+  function avgLines(linesH, linesA) {
+    if (!linesH || !linesA) return linesH || linesA;
+    return linesH.map((lh, i) => ({
+      line: lh.line,
+      over_pct:  Math.round((lh.over_pct  + (linesA[i]?.over_pct  || lh.over_pct))  / 2),
+      under_pct: Math.round((lh.under_pct + (linesA[i]?.under_pct || lh.under_pct)) / 2),
+    }));
+  }
+
+  const avgCorners  = +((h.corners.avg  + a.corners.avg)  / 2).toFixed(1);
+  const avgCards    = +((h.cards.avg    + a.cards.avg)    / 2).toFixed(1);
+  const avgOffsides = +((h.offsides.avg + a.offsides.avg) / 2).toFixed(1);
+
+  const combinedCornerLines   = avgLines(h.corners.lines,  a.corners.lines);
+  const combinedCardLines     = avgLines(h.cards.lines,    a.cards.lines);
+  const combinedOffsidesLines = avgLines(h.offsides.lines, a.offsides.lines);
+
+  return {
+    matches: Math.round((h.matches + a.matches) / 2),
+    corners: {
+      avg: avgCorners,
+      rec_line: recLine(avgCorners, combinedCornerLines),
+      lines: combinedCornerLines,
+    },
+    cards: {
+      avg: avgCards,
+      rec_line: recLine(avgCards, combinedCardLines),
+      lines: combinedCardLines,
+    },
+    offsides: {
+      avg: avgOffsides,
+      rec_line: recLine(avgOffsides, combinedOffsidesLines),
+      lines: combinedOffsidesLines,
+    },
+  };
+}
+
+// ─────────────────────────────────────────────────────────────
+// HANDLER PRINCIPAL
 // ─────────────────────────────────────────────────────────────
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
@@ -442,11 +509,9 @@ export default async function handler(req, res) {
     const homeStats = calcStats(homeFixtures || [], event.home_team_id);
     const awayStats = calcStats(awayFixtures || [], event.away_team_id);
 
-    // Ronda 3 — stats históricas (corners, tarjetas, offsides) en paralelo
-    // Usamos los IDs de los últimos 6 partidos de cada equipo
+    // Ronda 3 — stats históricas en paralelo
     const homeIds = homeStats?.finishedIds || [];
     const awayIds = awayStats?.finishedIds || [];
-    // Unión de IDs únicos (máx 12 llamadas)
     const allIds = [...new Set([...homeIds, ...awayIds])];
 
     const [homeHistStats, awayHistStats] = await Promise.all([
@@ -454,7 +519,6 @@ export default async function handler(req, res) {
       fetchHistoricalStats(awayIds, event.away_team_id),
     ]);
 
-    // Combina stats históricas de ambos equipos para el partido
     const matchHistStats = combineHistStats(homeHistStats, awayHistStats);
 
     // Extrae cuotas
@@ -494,61 +558,11 @@ export default async function handler(req, res) {
         model_confidence: mc,
         sample_factor: sf,
         lineup_status: lineups?.lineup_status || 'unavailable',
+        is_neutral_ground: isNeutralVenue(event), // indicador útil para el cliente
       },
     });
 
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
-}
-
-// ─────────────────────────────────────────────────────────────
-// COMBINA STATS HISTÓRICAS DE AMBOS EQUIPOS
-// ─────────────────────────────────────────────────────────────
-function combineHistStats(homeHist, awayHist) {
-  if (!homeHist && !awayHist) return null;
-  const h = homeHist || awayHist;
-  const a = awayHist || homeHist;
-
-  function avgLines(linesH, linesA) {
-    if (!linesH || !linesA) return linesH || linesA;
-    return linesH.map((lh, i) => ({
-      line: lh.line,
-      over_pct:  Math.round((lh.over_pct  + (linesA[i]?.over_pct  || lh.over_pct))  / 2),
-      under_pct: Math.round((lh.under_pct + (linesA[i]?.under_pct || lh.under_pct)) / 2),
-    }));
-  }
-
-  const avgCorners  = +((h.corners.avg  + a.corners.avg)  / 2).toFixed(1);
-  const avgCards    = +((h.cards.avg    + a.cards.avg)    / 2).toFixed(1);
-  const avgOffsides = +((h.offsides.avg + a.offsides.avg) / 2).toFixed(1);
-
-  function recLine(avg, lines) {
-    return lines.reduce((best, l) =>
-      Math.abs(l.line - avg) < Math.abs(best.line - avg) ? l : best
-    ).line;
-  }
-
-  const combinedCornerLines  = avgLines(h.corners.lines,  a.corners.lines);
-  const combinedCardLines    = avgLines(h.cards.lines,    a.cards.lines);
-  const combinedOffsidesLines= avgLines(h.offsides.lines, a.offsides.lines);
-
-  return {
-    matches: Math.round((h.matches + a.matches) / 2),
-    corners: {
-      avg: avgCorners,
-      rec_line: recLine(avgCorners, combinedCornerLines),
-      lines: combinedCornerLines,
-    },
-    cards: {
-      avg: avgCards,
-      rec_line: recLine(avgCards, combinedCardLines),
-      lines: combinedCardLines,
-    },
-    offsides: {
-      avg: avgOffsides,
-      rec_line: recLine(avgOffsides, combinedOffsidesLines),
-      lines: combinedOffsidesLines,
-    },
-  };
 }
