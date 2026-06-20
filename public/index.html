@@ -5,8 +5,8 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Scout — Análisis de Apuestas</title>
   <style>
-    /* ═══ ESTILOS (igual que antes, sin cambios) ═══ */
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&family=Space+Grotesk:wght@600;700&display=swap');
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Space+Grotesk:wght@600;700&display=swap');
+
     :root {
       --bg: #0b0d11;
       --s1: #13161c;
@@ -25,8 +25,11 @@
       --r: 10px;
       --rl: 14px;
       --sidebar-w: 460px;
+      --left-panel-w: 240px;
     }
+
     * { box-sizing: border-box; margin: 0; padding: 0; }
+
     body {
       background: var(--bg);
       color: var(--t);
@@ -34,25 +37,169 @@
       font-size: 16px;
       line-height: 1.5;
       overflow-x: hidden;
+      min-height: 100vh;
     }
-    .shell {
-      position: relative;
-      max-width: 1200px;
-      margin: 0 auto;
-      padding: 1.5rem 1.5rem 3rem;
+
+    .app-container {
       display: flex;
       min-height: 100vh;
     }
-    .main-content {
+
+    /* ── Panel izquierdo (filtros) ── */
+    .left-panel {
+      width: var(--left-panel-w);
+      background: var(--s1);
+      border-right: 1px solid var(--bd);
+      padding: 1.5rem 1rem;
+      overflow-y: auto;
+      position: fixed;
+      top: 0;
+      left: 0;
+      height: 100vh;
+      z-index: 50;
+      transition: transform 0.3s ease;
+    }
+    .left-panel h2 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.1rem;
+      color: #fff;
+      margin-bottom: 1.25rem;
+      padding-bottom: 0.75rem;
+      border-bottom: 1px solid var(--bd);
+    }
+    .league-filter {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      margin-bottom: 8px;
+      cursor: pointer;
+      font-size: 0.85rem;
+      color: var(--t);
+      padding: 6px 8px;
+      border-radius: 6px;
+      transition: background 0.15s;
+    }
+    .league-filter:hover { background: var(--s2); }
+    .league-filter input[type="checkbox"] { accent-color: var(--green); width: 16px; height: 16px; cursor: pointer; }
+    .league-filter .lf-name { flex: 1; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+
+    /* ── Área principal ── */
+    .main-area {
+      margin-left: var(--left-panel-w);
       flex: 1;
       transition: margin-right 0.3s ease;
       margin-right: 0;
+      max-width: 1200px;
+      width: 100%;
+      padding: 1.5rem 1.5rem 3rem;
     }
-    .main-content.sidebar-open {
+    .main-area.sidebar-open {
       margin-right: var(--sidebar-w);
     }
 
-    /* Sidebar */
+    /* Header */
+    .hdr {
+      display: flex;
+      align-items: baseline;
+      justify-content: space-between;
+      margin-bottom: 2rem;
+      border-bottom: 1px solid var(--bd);
+      padding-bottom: 1rem;
+    }
+    .hdr-left h1 {
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 1.8rem;
+      font-weight: 700;
+      color: #fff;
+    }
+    .hdr-left p { font-size: 0.9rem; color: var(--tm); margin-top: 2px; }
+
+    /* Date nav */
+    .date-nav {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 1.5rem;
+      margin-bottom: 2rem;
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    .date-nav button {
+      background: var(--s2);
+      border: 1px solid var(--bd);
+      color: var(--t);
+      font-size: 1.4rem;
+      width: 44px;
+      height: 44px;
+      border-radius: 50%;
+      cursor: pointer;
+      transition: background .2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+    .date-nav button:hover { background: var(--s1); border-color: var(--bds); }
+    .date-nav button:disabled { opacity: 0.3; cursor: default; }
+    .date-nav .date-label {
+      font-size: 1.3rem;
+      font-weight: 600;
+      color: #fff;
+      min-width: 180px;
+      text-align: center;
+    }
+    .date-nav .date-sub {
+      font-size: 0.75rem;
+      color: var(--tm);
+      display: block;
+    }
+
+    /* Tarjetas de partido (stack) */
+    .events-stack {
+      display: flex;
+      flex-direction: column;
+      gap: 0.5rem;
+    }
+    .event-card-big {
+      background: var(--s1);
+      border: 1px solid var(--bd);
+      border-radius: var(--rl);
+      padding: 1.1rem 1.5rem;
+      cursor: pointer;
+      transition: background .15s, border-color .15s;
+      display: flex;
+      align-items: center;
+      gap: 1rem;
+    }
+    .event-card-big:hover { background: var(--s2); border-color: var(--bds); }
+    .event-card-big .ec-time {
+      font-size: 1rem;
+      color: var(--tm);
+      min-width: 60px;
+      text-align: center;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+    .ec-live { width: 8px; height: 8px; background: var(--red); border-radius: 50%; margin-bottom: 4px; animation: pulse 1.5s infinite; }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
+    .ec-teams {
+      flex: 1;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: #fff;
+    }
+    .ec-teams .vs { color: var(--td); font-weight: 400; font-size: 0.8rem; margin: 0 6px; }
+    .ec-meta { font-size: 0.8rem; color: var(--tm); text-align: right; }
+    .ec-meta .round { color: var(--td); }
+
+    .empty-state, .loading-state {
+      text-align: center;
+      color: var(--td);
+      font-size: 1rem;
+      padding: 3rem 0;
+    }
+    .err-box { background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.2); border-radius: var(--r); padding: 0.875rem 1rem; color: var(--red); font-size: 0.85rem; }
+
+    /* ── Sidebar derecho (análisis) ── */
     .sidebar {
       position: fixed;
       top: 0;
@@ -89,109 +236,7 @@
     }
     .overlay.active { display: block; }
 
-    /* Header */
-    .hdr {
-      display: flex;
-      align-items: baseline;
-      justify-content: space-between;
-      margin-bottom: 2rem;
-      border-bottom: 1px solid var(--bd);
-      padding-bottom: 1rem;
-    }
-    .hdr-left h1 {
-      font-family: 'Space Grotesk', sans-serif;
-      font-size: 1.8rem;
-      font-weight: 700;
-      color: #fff;
-    }
-    .hdr-left p { font-size: 0.9rem; color: var(--tm); margin-top: 2px; }
-
-    /* Date nav */
-    .date-nav {
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      gap: 1.5rem;
-      margin-bottom: 1.8rem;
-      font-family: 'Space Grotesk', sans-serif;
-    }
-    .date-nav button {
-      background: var(--s2);
-      border: 1px solid var(--bd);
-      color: var(--t);
-      font-size: 1.4rem;
-      width: 44px;
-      height: 44px;
-      border-radius: 50%;
-      cursor: pointer;
-      transition: background .2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-    .date-nav button:hover { background: var(--s1); border-color: var(--bds); }
-    .date-nav button:disabled { opacity: 0.3; cursor: default; }
-    .date-nav .date-label {
-      font-size: 1.3rem;
-      font-weight: 600;
-      color: #fff;
-      min-width: 180px;
-      text-align: center;
-    }
-    .date-nav .date-sub {
-      font-size: 0.75rem;
-      color: var(--tm);
-      display: block;
-    }
-
-    /* Events stack */
-    .events-stack {
-      display: flex;
-      flex-direction: column;
-      gap: 0.5rem;
-    }
-    .event-card-big {
-      background: var(--s1);
-      border: 1px solid var(--bd);
-      border-radius: var(--rl);
-      padding: 1.2rem 1.5rem;
-      cursor: pointer;
-      transition: background .15s, border-color .15s;
-      display: flex;
-      align-items: center;
-      gap: 1rem;
-    }
-    .event-card-big:hover { background: var(--s2); border-color: var(--bds); }
-    .event-card-big .ec-time {
-      font-size: 1rem;
-      color: var(--tm);
-      min-width: 60px;
-      text-align: center;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-    }
-    .ec-live { width: 8px; height: 8px; background: var(--red); border-radius: 50%; margin-bottom: 4px; animation: pulse 1.5s infinite; }
-    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.3} }
-    .ec-teams {
-      flex: 1;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: #fff;
-    }
-    .ec-teams .vs { color: var(--td); font-weight: 400; font-size: 0.8rem; margin: 0 6px; }
-    .ec-meta { font-size: 0.8rem; color: var(--tm); text-align: right; }
-    .ec-meta .league { color: var(--purple); font-weight: 500; }
-
-    .empty-state, .loading-state {
-      text-align: center;
-      color: var(--td);
-      font-size: 1rem;
-      padding: 3rem 0;
-    }
-    .err-box { background: rgba(248,113,113,.07); border: 1px solid rgba(248,113,113,.2); border-radius: var(--r); padding: 0.875rem 1rem; color: var(--red); font-size: 0.85rem; }
-
-    /* (Todos los demás estilos de market-card, stat-card, etc., se mantienen igual; los incluyo por completitud pero están copiados del código anterior) */
+    /* ── Estilos internos del análisis (igual que antes) ── */
     .market-card, .stat-card {
       background: var(--s1);
       border: 1px solid var(--bd);
@@ -277,8 +322,15 @@
   </style>
 </head>
 <body>
-<div class="shell">
-  <div class="main-content" id="mainContent">
+<div class="app-container">
+  <!-- Panel izquierdo de filtros -->
+  <aside class="left-panel" id="leftPanel">
+    <h2>🏆 Ligas</h2>
+    <div id="leagueFilters"></div>
+  </aside>
+
+  <!-- Área principal -->
+  <div class="main-area" id="mainArea">
     <div class="hdr">
       <div class="hdr-left">
         <h1>⚽ Scout</h1>
@@ -287,7 +339,7 @@
       <div style="font-size:0.9rem; color:var(--td)" id="todayDate"></div>
     </div>
 
-    <div class="date-nav" id="dateNav">
+    <div class="date-nav">
       <button id="prevBtn" onclick="changeDate(-1)">←</button>
       <div>
         <span class="date-label" id="dateDisplay">Hoy</span>
@@ -300,13 +352,14 @@
       <div class="loading-state">Cargando partidos…</div>
     </div>
   </div>
-
-  <div class="sidebar" id="sidebar">
-    <button class="close-btn" onclick="closeSidebar()">&times;</button>
-    <div id="sidebarContent"></div>
-  </div>
-  <div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 </div>
+
+<!-- Sidebar derecho (análisis) -->
+<div class="sidebar" id="sidebar">
+  <button class="close-btn" onclick="closeSidebar()">&times;</button>
+  <div id="sidebarContent"></div>
+</div>
+<div class="overlay" id="overlay" onclick="closeSidebar()"></div>
 
 <script>
 const $ = id => document.getElementById(id);
@@ -321,10 +374,12 @@ function fmtDate(iso) {
 $('todayDate').innerText = new Date().toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long', year:'numeric', timeZone:'America/Panama' });
 
 // ──── Estado global ────
-let allEventsByDate = {};   // { 'YYYY-MM-DD': [...events] }
-let sortedDates = [];       // ['2026-06-20', '2026-06-21', ...]
-let currentIndex = 0;       // índice en sortedDates
+let allEventsByDate = {};
+let sortedDates = [];
+let currentIndex = 0;
 let currentId = null, currentData = null, currentTab = 'resultado';
+let visibleLeagues = new Set();
+let allLeagues = [];
 
 // ──── Carga inicial desde /api/today ────
 async function loadInitialEvents() {
@@ -333,7 +388,6 @@ async function loadInitialEvents() {
     const data = await res.json();
     if (data.error) throw new Error(data.error);
 
-    // Agrupar eventos por fecha (usando event_date, recortado a YYYY-MM-DD)
     const events = [...(data.today || []), ...(data.tomorrow || [])];
     const grouped = {};
     events.forEach(e => {
@@ -346,6 +400,15 @@ async function loadInitialEvents() {
     allEventsByDate = grouped;
     sortedDates = Object.keys(grouped).sort();
 
+    const leagueSet = new Set();
+    Object.values(grouped).forEach(evts => evts.forEach(e => {
+      const league = e.group_name || e.league_name || 'Sin liga';
+      leagueSet.add(league);
+    }));
+    allLeagues = Array.from(leagueSet).sort();
+    visibleLeagues = new Set(allLeagues);
+    renderLeagueFilters();
+
     if (sortedDates.length === 0) {
       $('eventsStack').innerHTML = '<div class="empty-state">No hay partidos programados.</div>';
       $('prevBtn').disabled = true;
@@ -353,10 +416,9 @@ async function loadInitialEvents() {
       return;
     }
 
-    // Posicionar el índice en la fecha más cercana a hoy
     const todayStr = new Date().toISOString().slice(0,10);
     currentIndex = sortedDates.indexOf(todayStr);
-    if (currentIndex === -1) currentIndex = 0; // si hoy no está, empezar en la primera
+    if (currentIndex === -1) currentIndex = 0;
 
     updateDateUI();
     renderEventsForCurrentDate();
@@ -365,7 +427,26 @@ async function loadInitialEvents() {
   }
 }
 
-// ──── Navegación de fecha ────
+function renderLeagueFilters() {
+  const container = $('leagueFilters');
+  if (!allLeagues.length) {
+    container.innerHTML = '<div style="font-size:0.8rem;color:var(--td)">Sin ligas</div>';
+    return;
+  }
+  container.innerHTML = allLeagues.map(league => `
+    <label class="league-filter">
+      <input type="checkbox" ${visibleLeagues.has(league) ? 'checked' : ''} onchange="toggleLeague('${league.replace(/'/g, "\\'")}', this.checked)">
+      <span class="lf-name">${league}</span>
+    </label>
+  `).join('');
+}
+
+function toggleLeague(league, isChecked) {
+  if (isChecked) visibleLeagues.add(league);
+  else visibleLeagues.delete(league);
+  renderEventsForCurrentDate();
+}
+
 function changeDate(offset) {
   const newIndex = currentIndex + offset;
   if (newIndex < 0 || newIndex >= sortedDates.length) return;
@@ -376,7 +457,7 @@ function changeDate(offset) {
 
 function updateDateUI() {
   const dateStr = sortedDates[currentIndex];
-  const date = new Date(dateStr + 'T12:00:00'); // mediodía para evitar desfases
+  const date = new Date(dateStr + 'T12:00:00');
   const today = new Date(); today.setHours(0,0,0,0);
   const tomorrow = new Date(today); tomorrow.setDate(today.getDate()+1);
 
@@ -393,14 +474,22 @@ function updateDateUI() {
   $('nextBtn').disabled = (currentIndex === sortedDates.length - 1);
 }
 
+// ──── RENDER DE EVENTOS (SIN AGRUPACIÓN) ────
 function renderEventsForCurrentDate() {
   const dateStr = sortedDates[currentIndex];
-  const events = allEventsByDate[dateStr] || [];
-  if (events.length === 0) {
-    $('eventsStack').innerHTML = '<div class="empty-state">No hay partidos en esta fecha.</div>';
+  const allEvents = allEventsByDate[dateStr] || [];
+  const filtered = allEvents.filter(e => {
+    const league = e.group_name || e.league_name || 'Sin liga';
+    return visibleLeagues.has(league);
+  });
+
+  if (!filtered.length) {
+    $('eventsStack').innerHTML = '<div class="empty-state">No hay partidos visibles para esta fecha.</div>';
     return;
   }
-  const html = events.map(e => {
+
+  // Lista plana de tarjetas
+  const cards = filtered.map(e => {
     const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(e.status);
     const isFin  = e.status === 'finished';
     const timeDisplay = isLive ? '<div class="ec-live"></div> EN VIVO' : (isFin ? 'Final' : fmtTime(e.event_date));
@@ -410,22 +499,23 @@ function renderEventsForCurrentDate() {
         <div class="ec-time">${timeDisplay}${score ? `<div style="font-size:1.1rem;color:#fff;margin-top:2px">${score}</div>` : ''}</div>
         <div class="ec-teams">${e.home_team} <span class="vs">vs</span> ${e.away_team}</div>
         <div class="ec-meta">
-          <div class="league">${e.group_name || ''}</div>
-          ${e.round_name ? `<div style="font-size:0.7rem;color:var(--td)">${e.round_name}</div>` : ''}
+          <div style="color:var(--purple);font-weight:500;font-size:0.75rem">${e.group_name || ''}</div>
+          ${e.round_name ? `<div class="round">${e.round_name}</div>` : ''}
         </div>
       </div>`;
   }).join('');
-  $('eventsStack').innerHTML = html;
+
+  $('eventsStack').innerHTML = cards;
 }
 
-// ──── Sidebar ────
+// ──── SIDEBAR Y ANÁLISIS (sin cambios) ────
 function openSidebar() {
-  document.querySelector('.main-content').classList.add('sidebar-open');
+  $('mainArea').classList.add('sidebar-open');
   $('sidebar').classList.add('open');
   $('overlay').classList.add('active');
 }
 function closeSidebar() {
-  document.querySelector('.main-content').classList.remove('sidebar-open');
+  $('mainArea').classList.remove('sidebar-open');
   $('sidebar').classList.remove('open');
   $('overlay').classList.remove('active');
   currentId = null;
@@ -477,8 +567,9 @@ function switchSidebarTab(tab) {
   });
   $('tabContentSidebar').innerHTML = renderTabContent(tab, currentData);
 }
+function barColor(p) { return p >= 65 ? '#4ade80' : p >= 45 ? '#fbbf24' : '#f87171'; }
 
-// ──── Funciones de renderizado de pestañas (copiadas exactamente del código anterior) ────
+// ──── RENDERERS DE PESTAÑAS (se incluye la función de Predicción mejorada) ────
 function renderTabContent(tab, d) {
   switch(tab) {
     case 'resultado':  return renderResultado(d);
@@ -534,7 +625,71 @@ function renderMeta(meta) {
     </div>`;
 }
 
-// ──── RENDERERS DE PESTAÑAS (COPIADOS EXACTOS DEL CÓDIGO ORIGINAL) ────
+// Predicción con nombre de ganador y marcador
+function renderPrediccion({ event:ev, prediction:pred, histStats, homeStats:hs, awayStats:as }) {
+  if (!pred) return '<div class="no-data">Sin predicción ML.</div>';
+  const mr = pred.markets?.match_result || {};
+  const eg = pred.markets?.expected_goals || {};
+  const sc = pred.markets?.score || {};
+  const rec = pred.recommendations || {};
+  const favorite = rec.favorite;
+  const winnerText = favorite === 'H' ? `${ev.home_team} gana` : favorite === 'A' ? `${ev.away_team} gana` : 'Empate';
+  const winnerProb = rec.favorite_prob != null ? rec.favorite_prob.toFixed(1) : '—';
+  const predictedScore = sc.most_likely || null;
+  const scoreProb = sc.probabilities?.[predictedScore] || sc.most_likely_prob || null;
+  const scoreProbText = scoreProb != null ? ` (${(scoreProb*100).toFixed(1)}%)` : '';
+  const xgH = eg.home || null;
+  const xgA = eg.away || null;
+  const xgTotal = xgH != null && xgA != null ? (xgH + xgA).toFixed(2) : null;
+  const cornersEst = histStats?.corners?.avg || null;
+  const cardsEst   = histStats?.cards?.avg   || null;
+  const offsidesEst= histStats?.offsides?.avg || null;
+  return `
+    <div class="pred-banner">
+      <div style="font-size:0.75rem;color:var(--tm);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em">Resultado más probable</div>
+      <div class="pred-result">${winnerText}</div>
+      <div class="pred-sub">Probabilidad ${winnerProb}% · Confianza ${Math.round((pred.model?.confidence||0)*100)}%</div>
+      ${predictedScore ? `
+        <div class="pred-scores">
+          <div class="pred-score-box">
+            <div class="psb-score">${predictedScore}</div>
+            <div class="psb-prob">Marcador más probable${scoreProbText}</div>
+          </div>
+        </div>` : ''}
+    </div>
+    <div class="pred-numbers">
+      <div class="pn-box">
+        <div class="pn-label">Goles esperados</div>
+        <div class="pn-val">${xgTotal || '—'}</div>
+        <div class="pn-unit">total xG</div>
+        ${xgH!=null?`<div class="pn-range">${ev.home_team.split(' ')[0]} ${xgH.toFixed(2)} · ${ev.away_team.split(' ')[0]} ${xgA.toFixed(2)}</div>`:''}
+      </div>
+      <div class="pn-box">
+        <div class="pn-label">Corners esperados</div>
+        <div class="pn-val">${cornersEst != null ? cornersEst.toFixed(1) : '—'}</div>
+        <div class="pn-unit">corners est.</div>
+      </div>
+      <div class="pn-box">
+        <div class="pn-label">Tarjetas esperadas</div>
+        <div class="pn-val">${cardsEst != null ? cardsEst.toFixed(1) : '—'}</div>
+        <div class="pn-unit">amarillas est.</div>
+      </div>
+    </div>
+    <div class="stat-card">
+      <div class="sec-title">Probabilidades ML detalladas</div>
+      <div class="bar-row"><span class="bar-label">${ev.home_team}</span><div class="bar-track"><div class="bar-fill" style="width:${mr.prob_home||0}%;background:var(--blue)"></div></div><span class="bar-val">${mr.prob_home?.toFixed(1)||'—'}%</span></div>
+      <div class="bar-row"><span class="bar-label">Empate</span><div class="bar-track"><div class="bar-fill" style="width:${mr.prob_draw||0}%;background:var(--yellow)"></div></div><span class="bar-val">${mr.prob_draw?.toFixed(1)||'—'}%</span></div>
+      <div class="bar-row"><span class="bar-label">${ev.away_team}</span><div class="bar-track"><div class="bar-fill" style="width:${mr.prob_away||0}%;background:var(--purple)"></div></div><span class="bar-val">${mr.prob_away?.toFixed(1)||'—'}%</span></div>
+      <div style="display:flex;gap:1.25rem;flex-wrap:wrap;margin-top:.875rem;font-size:12px">
+        ${pred.markets?.over_under?.prob_over_15!=null?`<span style="color:var(--td)">Over 1.5: <b style="color:var(--t)">${pred.markets.over_under.prob_over_15.toFixed(1)}%</b></span>`:''}
+        ${pred.markets?.over_under?.prob_over_25!=null?`<span style="color:var(--td)">Over 2.5: <b style="color:var(--t)">${pred.markets.over_under.prob_over_25.toFixed(1)}%</b></span>`:''}
+        ${pred.markets?.btts?.prob_yes!=null?`<span style="color:var(--td)">BTTS: <b style="color:var(--t)">${pred.markets.btts.prob_yes.toFixed(1)}%</b></span>`:''}
+        ${offsidesEst!=null?`<span style="color:var(--td)">Fueras de lugar est.: <b style="color:var(--t)">${offsidesEst.toFixed(1)}</b></span>`:''}
+      </div>
+    </div>`;
+}
+
+// ──── RESTO DE RENDERERS (se mantienen igual que en la versión anterior) ────
 function renderResultado({ event:ev, homeStats:hs, awayStats:as, prediction:pred }) {
   const mr = pred?.markets?.match_result || {};
   const hP = mr.prob_home || null;
@@ -714,51 +869,6 @@ function renderOffsides({ event:ev, histStats, homeHistStats, awayHistStats }) {
     </div>`;
 }
 
-function renderPrediccion({ event:ev, prediction:pred, histStats, homeStats:hs, awayStats:as }) {
-  if (!pred) return '<div class="no-data">Sin predicción ML.</div>';
-  const mr = pred.markets?.match_result || {};
-  const eg = pred.markets?.expected_goals || {};
-  const rec = pred.recommendations || {};
-  const winner = rec.favorite === 'H' ? ev.home_team : rec.favorite === 'A' ? ev.away_team : 'Empate';
-  const winnerProb = rec.favorite_prob != null ? rec.favorite_prob.toFixed(1) : '—';
-  const xgH = eg.home || null;
-  const xgA = eg.away || null;
-  const xgTotal = xgH != null && xgA != null ? (xgH + xgA).toFixed(2) : null;
-  const cornersEst = histStats?.corners?.avg || null;
-  const cardsEst   = histStats?.cards?.avg   || null;
-  const offsidesEst= histStats?.offsides?.avg || null;
-  return `
-    <div class="pred-banner">
-      <div style="font-size:0.75rem;color:var(--tm);margin-bottom:6px;text-transform:uppercase;letter-spacing:.08em">Resultado más probable</div>
-      <div class="pred-result">${winner}</div>
-      <div class="pred-sub">Probabilidad ${winnerProb}% · Confianza ${Math.round((pred.model?.confidence||0)*100)}%</div>
-    </div>
-    <div class="pred-numbers">
-      <div class="pn-box">
-        <div class="pn-label">Goles esperados</div>
-        <div class="pn-val">${xgTotal || '—'}</div>
-        <div class="pn-unit">total xG</div>
-        ${xgH!=null?`<div class="pn-range">${ev.home_team.split(' ')[0]} ${xgH.toFixed(2)} · ${ev.away_team.split(' ')[0]} ${xgA.toFixed(2)}</div>`:''}
-      </div>
-      <div class="pn-box">
-        <div class="pn-label">Corners esperados</div>
-        <div class="pn-val">${cornersEst != null ? cornersEst.toFixed(1) : '—'}</div>
-        <div class="pn-unit">corners est.</div>
-      </div>
-      <div class="pn-box">
-        <div class="pn-label">Tarjetas esperadas</div>
-        <div class="pn-val">${cardsEst != null ? cardsEst.toFixed(1) : '—'}</div>
-        <div class="pn-unit">amarillas est.</div>
-      </div>
-    </div>
-    <div class="stat-card">
-      <div class="sec-title">Probabilidades ML</div>
-      <div class="bar-row"><span class="bar-label">${ev.home_team}</span><div class="bar-track"><div class="bar-fill" style="width:${mr.prob_home||0}%;background:var(--blue)"></div></div><span class="bar-val">${mr.prob_home?.toFixed(1)||'—'}%</span></div>
-      <div class="bar-row"><span class="bar-label">Empate</span><div class="bar-track"><div class="bar-fill" style="width:${mr.prob_draw||0}%;background:var(--yellow)"></div></div><span class="bar-val">${mr.prob_draw?.toFixed(1)||'—'}%</span></div>
-      <div class="bar-row"><span class="bar-label">${ev.away_team}</span><div class="bar-track"><div class="bar-fill" style="width:${mr.prob_away||0}%;background:var(--purple)"></div></div><span class="bar-val">${mr.prob_away?.toFixed(1)||'—'}%</span></div>
-    </div>`;
-}
-
 function renderEquipos({ event:ev, homeStats:hs, awayStats:as }) {
   if (!hs && !as) return '<div class="no-data">Sin datos históricos.</div>';
   function teamCard(stats, name, ctx) {
@@ -854,7 +964,7 @@ function renderAlineacion({ event:ev, lineups }) {
     </div>`;
 }
 
-// ──── Iniciar ────
+// Iniciar
 loadInitialEvents();
 </script>
 </body>
