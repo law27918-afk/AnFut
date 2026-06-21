@@ -262,6 +262,26 @@ body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-siz
 
 .no-data{color:var(--td);font-size:13px;font-style:italic;padding:.75rem 0}
 .err-box{background:var(--red-dim);border:.5px solid rgba(255,95,95,.2);border-radius:var(--r);padding:.875rem 1.25rem;color:var(--red);font-size:13px}
+
+/* ── Player threat cards ── */
+.player-threat-list{display:flex;flex-direction:column;gap:6px;margin-bottom:.875rem}
+.pt-card{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:.875rem 1.25rem;display:flex;align-items:center;gap:12px}
+.pt-card.top{border-color:rgba(61,220,132,.3);background:rgba(61,220,132,.03)}
+.pt-rank{font-family:"Space Grotesk",sans-serif;font-size:18px;font-weight:700;color:var(--td);min-width:28px;text-align:center}
+.pt-rank.r1{color:var(--yellow)}
+.pt-rank.r2{color:var(--tm)}
+.pt-rank.r3{color:var(--orange)}
+.pt-info{flex:1;min-width:0}
+.pt-name{font-size:15px;font-weight:500;color:#fff;margin-bottom:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pt-meta{font-size:12px;color:var(--tm)}
+.pt-bars{flex:0 0 180px}
+.pt-bar-row{display:flex;align-items:center;gap:6px;margin-bottom:3px;font-size:11px}
+.pt-bar-label{min-width:28px;color:var(--td);text-align:right}
+.pt-bar-track{flex:1;height:4px;background:var(--s2);border-radius:99px;overflow:hidden}
+.pt-bar-fill{height:100%;border-radius:99px}
+.pt-prob{text-align:right;flex-shrink:0}
+.pt-prob-val{font-family:"Space Grotesk",sans-serif;font-size:18px;font-weight:700}
+.pt-prob-lbl{font-size:10px;color:var(--td)}
 </style>
 </head>
 <body>
@@ -357,35 +377,81 @@ window.addEventListener('popstate', handleHash);
 // ══════════════════════════════════════════════════
 // SCREEN 1 — EVENTS
 // ══════════════════════════════════════════════════
+// ── Date navigator ────────────────────────────────
+function panamaToday() {
+  const d = new Date(Date.now() - 5 * 60 * 60 * 1000);
+  return d.toISOString().split('T')[0];
+}
+
+state.currentDate = state.currentDate || panamaToday();
+const MAX_DAYS_AHEAD = 3;
+
+function dateLabel(dateStr) {
+  const today = panamaToday();
+  const diff = Math.round((new Date(dateStr) - new Date(today)) / 86400000);
+  if (diff === 0) return 'Hoy';
+  if (diff === 1) return 'Mañana';
+  return new Date(dateStr + 'T12:00:00').toLocaleDateString('es', { weekday:'long', day:'numeric', month:'long' });
+}
+
+function offsetDate(base, days) {
+  const d = new Date(base + 'T12:00:00');
+  d.setDate(d.getDate() + days);
+  return d.toISOString().split('T')[0];
+}
+
+function renderDateNav(dateStr) {
+  const today = panamaToday();
+  const diff  = Math.round((new Date(dateStr) - new Date(today)) / 86400000);
+  const canPrev = diff > 0;
+  const canNext = diff < MAX_DAYS_AHEAD;
+  return `
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:1.25rem;background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);padding:.75rem 1.25rem">
+      <button onclick="changeDate(-1)" style="background:none;border:none;cursor:${canPrev?'pointer':'default'};font-size:22px;color:${canPrev?'var(--t)':'var(--td)'};padding:4px 10px;border-radius:var(--r)" ${canPrev?'':'disabled'}>‹</button>
+      <div style="text-align:center">
+        <div style="font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#fff">${dateLabel(dateStr)}</div>
+        <div style="font-size:12px;color:var(--tm);margin-top:2px">${dateStr}</div>
+      </div>
+      <button onclick="changeDate(1)" style="background:none;border:none;cursor:${canNext?'pointer':'default'};font-size:22px;color:${canNext?'var(--t)':'var(--td)'};padding:4px 10px;border-radius:var(--r)" ${canNext?'':'disabled'}>›</button>
+    </div>`;
+}
+
+function changeDate(delta) {
+  const today = panamaToday();
+  const diff  = Math.round((new Date(state.currentDate) - new Date(today)) / 86400000);
+  const newDiff = diff + delta;
+  if (newDiff < 0 || newDiff > MAX_DAYS_AHEAD) return;
+  state.currentDate = offsetDate(today, newDiff);
+  loadEvents();
+}
+
 async function loadEvents() {
+  const dateStr = state.currentDate;
+  const listContent = document.getElementById('listContent');
+  listContent.innerHTML = renderDateNav(dateStr) +
+    '<div class="matches-list">' + [1,2,3,4,5].map(() => '<div class="skeleton sk-card"></div>').join('') + '</div>';
   try {
-    const r = await fetch('/api/today');
+    const r = await fetch('/api/today?date=' + dateStr);
     const data = await r.json();
     if (data.error) throw new Error(data.error);
-    state.events = data;
-    renderList(data);
+    renderList(data, dateStr);
   } catch(e) {
-    document.getElementById('listContent').innerHTML = `<div class="err-box">❌ ${e.message}</div>`;
+    listContent.innerHTML = renderDateNav(dateStr) + `<div class="err-box">❌ ${e.message}</div>`;
   }
 }
 
-function renderList({ today=[], tomorrow=[] }) {
-  if (!today.length && !tomorrow.length) {
-    document.getElementById('listContent').innerHTML = '<div class="no-data">No hay partidos para hoy ni mañana.</div>';
+function renderList({ events=[] }, dateStr) {
+  const nav = renderDateNav(dateStr);
+  if (!events.length) {
+    document.getElementById('listContent').innerHTML = nav + '<div class="no-data" style="padding:2rem 0;text-align:center">No hay partidos para este día.</div>';
     return;
   }
-
-  let html = '';
-  if (today.length) {
-    html += `<div class="day-header"><div class="day-title">Hoy</div><div class="day-line"></div><div class="day-badge">${today.length} partidos</div></div>`;
-    html += '<div class="matches-list">' + today.map(matchCard).join('') + '</div>';
-  }
-  if (tomorrow.length) {
-    html += `<div class="day-header"><div class="day-title">Mañana</div><div class="day-line"></div><div class="day-badge">${tomorrow.length} partidos</div></div>`;
-    html += '<div class="matches-list">' + tomorrow.map(matchCard).join('') + '</div>';
-  }
+  const html = nav +
+    `<div class="day-header"><div class="day-title">${dateLabel(dateStr)}</div><div class="day-line"></div><div class="day-badge">${events.length} partidos</div></div>` +
+    '<div class="matches-list">' + events.map(matchCard).join('') + '</div>';
   document.getElementById('listContent').innerHTML = html;
 }
+
 
 function matchCard(e) {
   const isLive = ['1st_half','2nd_half','halftime','inprogress'].includes(e.status);
@@ -473,6 +539,7 @@ function renderDetail(d) {
     { id:'alineacion', label:'👥 Alineaciones' },
     { id:'h2h',        label:'🔍 H2H' },
     { id:'riesgos',    label:'🚨 Riesgos' },
+    { id:'jugadores',  label:'⚽ Goleadores' },
   ];
 
   const tabsHTML = tabs.map(t =>
@@ -500,6 +567,7 @@ function renderTab(id, d) {
     case 'alineacion': return tabAlineacion(d);
     case 'h2h':        return tabH2H(d);
     case 'riesgos':    return tabRiesgos(d);
+    case 'jugadores':  return tabJugadores(d);
     default: return '';
   }
 }
