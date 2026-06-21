@@ -1,47 +1,39 @@
 import { bsd } from './_bsd.js';
 
-// Fecha local en Panamá (UTC-5) como YYYY-MM-DD
-function panamaDate(offsetDays = 0) {
-  const d = new Date();
-  d.setUTCHours(d.getUTCHours() - 5); // UTC-5
-  d.setUTCDate(d.getUTCDate() + offsetDays);
-  return d.toISOString().split('T')[0];
-}
-
 export default async function handler(req, res) {
   res.setHeader('Access-Control-Allow-Origin', '*');
 
   try {
-    const todayStr    = panamaDate(0);
-    const tomorrowStr = panamaDate(1);
+    // Accept ?date=YYYY-MM-DD (Panama time). Defaults to today Panama.
+    let dateStr = req.query.date;
 
-    // Pide desde inicio de hoy hasta fin de mañana en UTC
-    const dateFrom = todayStr + 'T05:00:00Z';   // 00:00 Panamá = 05:00 UTC
-    const dateTo   = tomorrowStr + 'T04:59:59Z'; // 23:59 mañana Panamá = 04:59 UTC+1d
-    const dateToReal = panamaDate(2) + 'T04:59:59Z';
+    if (!dateStr || !/^\d{4}-\d{2}-\d{2}$/.test(dateStr)) {
+      // Compute today in Panama (UTC-5)
+      const now = new Date();
+      const panama = new Date(now.getTime() - 5 * 60 * 60 * 1000);
+      dateStr = panama.toISOString().split('T')[0];
+    }
+
+    // Panama midnight = UTC+5:00, Panama 23:59 = UTC next day 04:59
+    const dateFrom = dateStr + 'T05:00:00Z';
+    const [y, m, d] = dateStr.split('-').map(Number);
+    const next = new Date(Date.UTC(y, m - 1, d + 1));
+    const dateTo = next.toISOString().split('T')[0] + 'T04:59:59Z';
 
     const events = await bsd('/events/', {
       date_from: dateFrom,
-      date_to:   dateToReal,
+      date_to:   dateTo,
       limit: 200,
     });
 
-    const grouped = { today: [], tomorrow: [] };
+    const list = (Array.isArray(events) ? events : [])
+      .filter(e => {
+        const panama = new Date(new Date(e.event_date).getTime() - 5 * 60 * 60 * 1000);
+        return panama.toISOString().split('T')[0] === dateStr;
+      })
+      .sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
 
-    (Array.isArray(events) ? events : []).forEach(e => {
-      // Convierte event_date a fecha Panamá
-      const utc = new Date(e.event_date);
-      const panama = new Date(utc.getTime() - 5 * 60 * 60 * 1000);
-      const d = panama.toISOString().split('T')[0];
-      if (d === todayStr) grouped.today.push(e);
-      else if (d === tomorrowStr) grouped.tomorrow.push(e);
-    });
-
-    // Ordena por hora
-    grouped.today.sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
-    grouped.tomorrow.sort((a, b) => new Date(a.event_date) - new Date(b.event_date));
-
-    res.status(200).json(grouped);
+    res.status(200).json({ date: dateStr, events: list });
   } catch (err) {
     res.status(500).json({ error: err.message });
   }

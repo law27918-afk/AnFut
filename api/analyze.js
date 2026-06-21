@@ -513,6 +513,62 @@ async function fetchHistoricalStats(eventIds) {
   };
 }
 
+
+// ═══════════════════════════════════════════════════════════════
+// PLAYER ANALYSIS ENGINE
+// ═══════════════════════════════════════════════════════════════
+
+async function fetchPlayerStats(finishedEventIds, teamId, lineupPlayers) {
+  if (!finishedEventIds?.length || !lineupPlayers?.length) return null;
+  const lineupIds = new Set(lineupPlayers.map(p => p.id).filter(Boolean));
+  const results = await Promise.all(
+    finishedEventIds.slice(0, 6).map(eid => safe(bsd(`/events/${eid}/player-stats/`)))
+  );
+  const acc = {};
+  results.forEach(data => {
+    if (!data?.player_stats) return;
+    data.player_stats.forEach(ps => {
+      if (ps.team_id !== teamId) return;
+      if (ps.minutes_played <= 0) return;
+      const pid = ps.player_id;
+      if (!acc[pid]) acc[pid] = { player_id:pid, matches:0, mins:0, xg:0, shots:0, sot:0, goals:0, assists:0, rating_sum:0, rating_count:0 };
+      const a = acc[pid];
+      a.matches++; a.mins += ps.minutes_played||0; a.xg += ps.expected_goals||0;
+      a.shots += ps.total_shots||0; a.sot += ps.shots_on_target||0;
+      a.goals += ps.goals||0; a.assists += ps.goal_assist||0;
+      if (ps.rating) { a.rating_sum += ps.rating; a.rating_count++; }
+    });
+  });
+  const lineupMap = {};
+  lineupPlayers.forEach(p => { if (p.id) lineupMap[p.id] = p; });
+  const players = Object.values(acc)
+    .filter(p => p.mins >= 45)
+    .map(p => {
+      const per90 = v => p.mins > 0 ? +(v / p.mins * 90).toFixed(2) : 0;
+      const xgP90 = per90(p.xg), sotP90 = per90(p.sot), shotsP90 = per90(p.shots);
+      const threat = +(xgP90 * 1.0 + sotP90 * 0.3 + shotsP90 * 0.1).toFixed(3);
+      const goalProb = Math.min(Math.round(Math.max(p.goals / p.matches, xgP90 / 90 * 70) * 100), 85);
+      return {
+        player_id: p.player_id,
+        name: lineupMap[p.player_id]?.name || (`Jugador #${p.player_id}`),
+        position: lineupMap[p.player_id]?.position || '--',
+        in_lineup: lineupIds.has(p.player_id),
+        matches: p.matches, mins_total: p.mins,
+        xg_total: +p.xg.toFixed(2), xg_p90: xgP90,
+        shots_p90: shotsP90, sot_p90: sotP90,
+        goals_total: p.goals, assists_total: p.assists,
+        avg_rating: p.rating_count > 0 ? +(p.rating_sum / p.rating_count).toFixed(1) : null,
+        threat_score: threat,
+        goal_prob: goalProb,
+      };
+    })
+    .sort((a, b) => b.threat_score - a.threat_score);
+  return {
+    top_scorers: players.filter(p => p.in_lineup).slice(0, 8),
+    all_tracked: players.slice(0, 15),
+  };
+}
+
 // ═══════════════════════════════════════════════════════════════
 // HANDLER
 // ═══════════════════════════════════════════════════════════════
@@ -556,6 +612,17 @@ export default async function handler(req, res) {
 
     const histStats = await fetchHistoricalStats(allFinishedIds);
 
+    // Phase 4 — player threat analysis (uses lineup + historical player-stats)
+    const homePlayers = lineups?.lineups?.home?.players || [];
+    const awayPlayers = lineups?.lineups?.away?.players || [];
+    const homeFinishedIds = homeStats?.finishedIds || [];
+    const awayFinishedIds = awayStats?.finishedIds || [];
+
+    const [homePlayerStats, awayPlayerStats] = await Promise.all([
+      fetchPlayerStats(homeFinishedIds, event.home_team_id, homePlayers),
+      fetchPlayerStats(awayFinishedIds, event.away_team_id, awayPlayers),
+    ]);
+
     // Extract odds
     const markets = oddsData?.markets || {};
     const odds = {
@@ -589,6 +656,8 @@ export default async function handler(req, res) {
       h2h,
       lineups,
       histStats,
+      homePlayerStats,
+      awayPlayerStats,
       poisson,
       ensemble,
       bets,
