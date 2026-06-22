@@ -484,30 +484,33 @@ async function fetchHistoricalStats(eventIds) {
   function overPct(list, line) {
     return !list.length ? 0 : Math.round(list.filter(v => v > line).length / list.length * 100);
   }
-  function recLine(avg, lines) {
-    return lines.reduce((b, l) => Math.abs(l - avg) < Math.abs(b - avg) ? l : b);
+
+  // Conservative rec_line: pick the line ~75-80% of avg (safer bet)
+  function conservativeRecLine(avg, lines) {
+    const target = avg * 0.78; // 78% of avg = conservative
+    return lines.reduce((b, l) => Math.abs(l - target) < Math.abs(b - target) ? l : b);
   }
 
-  const cornerLines   = [7.5, 8.5, 9.5, 10.5, 11.5, 12.5];
-  const cardLines     = [1.5, 2.5, 3.5, 4.5, 5.5];
-  const offsidesLines = [1.5, 2.5, 3.5, 4.5, 5.5];
+  const cornerLines   = [4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5];
+  const cardLines     = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5];
+  const offsidesLines = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5];
 
   return {
     matches: count,
     corners: {
       avg: avgC,
-      rec_line: recLine(avgC, cornerLines),
+      rec_line: conservativeRecLine(avgC, cornerLines),
       lines: cornerLines.map(l => ({ line: l, over_pct: overPct(cL, l), under_pct: 100 - overPct(cL, l) })),
     },
     cards: {
       avg: avgY,
       avg_red: +(reds / count).toFixed(1),
-      rec_line: recLine(avgY, cardLines),
+      rec_line: conservativeRecLine(avgY, cardLines),
       lines: cardLines.map(l => ({ line: l, over_pct: overPct(yL, l), under_pct: 100 - overPct(yL, l) })),
     },
     offsides: {
       avg: avgO,
-      rec_line: recLine(avgO, offsidesLines),
+      rec_line: conservativeRecLine(avgO, offsidesLines),
       lines: offsidesLines.map(l => ({ line: l, over_pct: overPct(oL, l), under_pct: 100 - overPct(oL, l) })),
     },
   };
@@ -519,53 +522,91 @@ async function fetchHistoricalStats(eventIds) {
 // ═══════════════════════════════════════════════════════════════
 
 async function fetchPlayerStats(finishedEventIds, teamId, lineupPlayers) {
-  if (!finishedEventIds?.length || !lineupPlayers?.length) return null;
+  if (!lineupPlayers?.length) return null;
+
   const lineupIds = new Set(lineupPlayers.map(p => p.id).filter(Boolean));
-  const results = await Promise.all(
-    finishedEventIds.slice(0, 6).map(eid => safe(bsd(`/events/${eid}/player-stats/`)))
-  );
   const acc = {};
-  results.forEach(data => {
-    if (!data?.player_stats) return;
-    data.player_stats.forEach(ps => {
-      if (ps.team_id !== teamId) return;
-      if (ps.minutes_played <= 0) return;
-      const pid = ps.player_id;
-      if (!acc[pid]) acc[pid] = { player_id:pid, matches:0, mins:0, xg:0, shots:0, sot:0, goals:0, assists:0, rating_sum:0, rating_count:0 };
-      const a = acc[pid];
-      a.matches++; a.mins += ps.minutes_played||0; a.xg += ps.expected_goals||0;
-      a.shots += ps.total_shots||0; a.sot += ps.shots_on_target||0;
-      a.goals += ps.goals||0; a.assists += ps.goal_assist||0;
-      if (ps.rating) { a.rating_sum += ps.rating; a.rating_count++; }
+
+  // Fetch historical player-stats if we have finished events
+  if (finishedEventIds?.length) {
+    const results = await Promise.all(
+      finishedEventIds.slice(0, 6).map(eid => safe(bsd(`/events/${eid}/player-stats/`)))
+    );
+    results.forEach(data => {
+      if (!data?.player_stats) return;
+      data.player_stats.forEach(ps => {
+        if (ps.team_id !== teamId) return;
+        if (ps.minutes_played <= 0) return;
+        const pid = ps.player_id;
+        if (!acc[pid]) acc[pid] = { player_id:pid, matches:0, mins:0, xg:0, shots:0, sot:0, goals:0, assists:0, rating_sum:0, rating_count:0 };
+        const a = acc[pid];
+        a.matches++; a.mins += ps.minutes_played||0; a.xg += ps.expected_goals||0;
+        a.shots += ps.total_shots||0; a.sot += ps.shots_on_target||0;
+        a.goals += ps.goals||0; a.assists += ps.goal_assist||0;
+        if (ps.rating) { a.rating_sum += ps.rating; a.rating_count++; }
+      });
     });
-  });
+  }
+
   const lineupMap = {};
   lineupPlayers.forEach(p => { if (p.id) lineupMap[p.id] = p; });
-  const players = Object.values(acc)
-    .filter(p => p.mins >= 45)
+
+  // Build enriched player list — ALL lineup players appear, history optional
+  const players = lineupPlayers
+    .filter(p => p.id && p.position !== 'G') // exclude goalkeepers
     .map(p => {
-      const per90 = v => p.mins > 0 ? +(v / p.mins * 90).toFixed(2) : 0;
-      const xgP90 = per90(p.xg), sotP90 = per90(p.sot), shotsP90 = per90(p.shots);
-      const threat = +(xgP90 * 1.0 + sotP90 * 0.3 + shotsP90 * 0.1).toFixed(3);
-      const goalProb = Math.min(Math.round(Math.max(p.goals / p.matches, xgP90 / 90 * 70) * 100), 85);
+      const hist = acc[p.id];
+      const hasHist = hist && hist.mins >= 30;
+      const per90 = v => hasHist && hist.mins > 0 ? +(v / hist.mins * 90).toFixed(2) : null;
+
+      const xgP90    = hasHist ? per90(hist.xg)    : null;
+      const sotP90   = hasHist ? per90(hist.sot)   : null;
+      const shotsP90 = hasHist ? per90(hist.shots) : null;
+
+      // Threat score — if no history, use ai_score from lineup as proxy
+      const aiScore = p.ai_score || 0;
+      const threat = hasHist
+        ? +((xgP90 || 0) * 1.0 + (sotP90 || 0) * 0.3 + (shotsP90 || 0) * 0.1).toFixed(3)
+        : +(aiScore * 0.3).toFixed(3); // proxy from AI lineup score
+
+      // Goal probability per match
+      let goalProb = 0;
+      if (hasHist) {
+        const xgBased   = (xgP90 || 0) * 0.7;
+        const goalBased  = hist.goals / hist.matches;
+        goalProb = Math.min(Math.round(Math.max(xgBased, goalBased) * 100), 80);
+      } else {
+        // Estimate from position + ai_score
+        const posBase = { F:12, ST:14, SS:13, AM:8, LW:9, RW:9, CM:5, DM:3, LM:7, RM:7, M:5, D:2, CB:2, LB:2, RB:2 };
+        goalProb = Math.round((posBase[p.position] || 4) * (0.5 + aiScore * 0.5));
+      }
+
       return {
-        player_id: p.player_id,
-        name: lineupMap[p.player_id]?.name || (`Jugador #${p.player_id}`),
-        position: lineupMap[p.player_id]?.position || '--',
-        in_lineup: lineupIds.has(p.player_id),
-        matches: p.matches, mins_total: p.mins,
-        xg_total: +p.xg.toFixed(2), xg_p90: xgP90,
-        shots_p90: shotsP90, sot_p90: sotP90,
-        goals_total: p.goals, assists_total: p.assists,
-        avg_rating: p.rating_count > 0 ? +(p.rating_sum / p.rating_count).toFixed(1) : null,
+        player_id:    p.id,
+        name:         p.name || p.short_name || `Jugador #${p.id}`,
+        position:     p.position || '--',
+        jersey_number: p.jersey_number,
+        ai_score:     p.ai_score,
+        in_lineup:    true,
+        has_history:  hasHist,
+        matches:      hist?.matches || 0,
+        mins_total:   hist?.mins || 0,
+        xg_total:     hasHist ? +hist.xg.toFixed(2) : null,
+        xg_p90:       xgP90,
+        shots_p90:    shotsP90,
+        sot_p90:      sotP90,
+        goals_total:  hist?.goals || 0,
+        assists_total: hist?.assists || 0,
+        avg_rating:   hasHist && hist.rating_count > 0 ? +(hist.rating_sum / hist.rating_count).toFixed(1) : null,
         threat_score: threat,
-        goal_prob: goalProb,
+        goal_prob:    goalProb,
       };
     })
     .sort((a, b) => b.threat_score - a.threat_score);
+
   return {
-    top_scorers: players.filter(p => p.in_lineup).slice(0, 8),
-    all_tracked: players.slice(0, 15),
+    top_scorers:  players.slice(0, 11), // full outfield lineup
+    lineup_status: lineupPlayers.length > 0 ? 'available' : 'unavailable',
   };
 }
 
