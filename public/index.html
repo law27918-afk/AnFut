@@ -282,6 +282,32 @@ body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-siz
 .pt-prob{text-align:right;flex-shrink:0}
 .pt-prob-val{font-family:"Space Grotesk",sans-serif;font-size:18px;font-weight:700}
 .pt-prob-lbl{font-size:10px;color:var(--td)}
+
+/* ── Ticket builder ── */
+.ticket-wrap{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--rl);overflow:hidden;margin-bottom:.875rem}
+.ticket-header{background:var(--s2);padding:.875rem 1.25rem;display:flex;align-items:center;justify-content:space-between}
+.ticket-title{font-family:'Space Grotesk',sans-serif;font-size:16px;font-weight:700;color:#fff}
+.ticket-clear{font-size:12px;color:var(--tm);cursor:pointer;padding:4px 10px;border-radius:var(--r);background:none;border:.5px solid var(--bd);transition:all .15s}
+.ticket-clear:hover{color:var(--red);border-color:rgba(255,95,95,.3)}
+.ticket-legs{padding:.875rem 1.25rem}
+.ticket-leg{display:flex;align-items:center;gap:10px;padding:.625rem 0;border-bottom:.5px solid var(--bd)}
+.ticket-leg:last-child{border-bottom:none}
+.tl-market{flex:1;font-size:13px;color:var(--t)}
+.tl-prob{font-size:13px;font-weight:500;color:var(--tm);min-width:36px;text-align:right}
+.tl-remove{background:none;border:none;cursor:pointer;color:var(--td);font-size:16px;padding:2px 6px;border-radius:4px;transition:color .15s}
+.tl-remove:hover{color:var(--red)}
+.ticket-result{padding:1rem 1.25rem;background:linear-gradient(135deg,var(--s2),var(--s3));border-top:.5px solid var(--bd)}
+.tr-combined{display:flex;align-items:baseline;gap:8px;margin-bottom:4px}
+.tr-prob{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:700}
+.tr-label{font-size:13px;color:var(--tm)}
+.tr-note{font-size:12px;color:var(--td)}
+.ticket-add-section{margin-bottom:.875rem}
+.ta-label{font-size:11px;color:var(--tm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.625rem;font-weight:500}
+.add-bet-grid{display:flex;flex-direction:column;gap:5px}
+.add-bet-btn{background:var(--s2);border:.5px solid var(--bd);border-radius:var(--r);padding:.625rem 1rem;text-align:left;cursor:pointer;font-size:13px;color:var(--t);display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
+.add-bet-btn:hover{border-color:var(--green);background:rgba(61,220,132,.04)}
+.add-bet-btn.added{border-color:rgba(61,220,132,.4);background:rgba(61,220,132,.06);color:var(--green)}
+.ab-prob{font-size:12px;color:var(--tm)}
 </style>
 </head>
 <body>
@@ -539,6 +565,7 @@ function renderDetail(d) {
     { id:'alineacion', label:'👥 Alineaciones' },
     { id:'h2h',        label:'🔍 H2H' },
     { id:'riesgos',    label:'🚨 Riesgos' },
+    { id:'ticket',     label:'🎫 Mi Ticket' },
     { id:'jugadores',  label:'⚽ Goleadores' },
   ];
 
@@ -568,6 +595,7 @@ function renderTab(id, d) {
     case 'h2h':        return tabH2H(d);
     case 'riesgos':    return tabRiesgos(d);
     case 'jugadores':  return tabJugadores(d);
+    case 'ticket':     return tabTicket(d);
     default: return '';
   }
 }
@@ -743,7 +771,10 @@ function tabGoles({ event:ev, poisson, prediction:pred, homeStats:hs, awayStats:
   const o35 = poisson.over35;
   const bt  = poisson.btts;
 
+  // 0.5 line: probability of at least 1 goal (very common)
+  const o05 = Math.min(Math.round(o15 * 1.08), 99); // ~8% more likely than o15
   const lines = [
+    { label:'Over 0.5 goles', prob:o05, odds: null, color:'var(--green)' },
     { label:'Over 1.5 goles', prob:o15, odds: odds.over15, color:'var(--green)' },
     { label:'Over 2.5 goles', prob:o25, odds: odds.over25, color:'var(--yellow)' },
     { label:'Over 3.5 goles', prob:o35, odds: null,        color:'var(--orange)' },
@@ -1034,43 +1065,182 @@ function tabRiesgos({ meta, event:ev, lineups, homeStats:hs, awayStats:as }) {
 // ══════════════════════════════════════════════════
 
 // ── TAB: JUGADORES ────────────────────────────────
-function tabJugadores({ event:ev, homePlayerStats:hps, awayPlayerStats:aps }) {
+function tabJugadores({ event:ev, homePlayerStats:hps, awayPlayerStats:aps, lineups }) {
+  const lStatus = lineups?.lineup_status;
+  const lBadge = lStatus === 'confirmed'
+    ? '<span style="background:var(--green-dim);color:var(--green);font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;margin-left:6px">✅ Alineación oficial</span>'
+    : '<span style="background:var(--blue-dim);color:var(--blue);font-size:10px;padding:2px 8px;border-radius:20px;font-weight:600;margin-left:6px">🤖 Predicción IA</span>';
+
   function teamSection(stats, teamName) {
     if (!stats || !stats.top_scorers || !stats.top_scorers.length) {
-      return '<div class="card"><div class="sec-hdr">' + teamName + '</div><div class="no-data">Sin datos históricos de jugadores disponibles.</div></div>';
+      return '<div class="card"><div class="sec-hdr">' + teamName + '</div><div class="no-data">Sin datos de alineación disponibles.</div></div>';
     }
     const cards = stats.top_scorers.map((p, i) => {
       const rankClass = i===0?'r1':i===1?'r2':i===2?'r3':'';
       const isTop = i < 3;
-      const xgW   = Math.min(p.xg_p90 * 40, 100);
-      const sotW  = Math.min(p.sot_p90 * 60, 100);
-      const shotW = Math.min(p.shots_p90 * 30, 100);
-      const probColor = p.goal_prob >= 30 ? 'var(--green)' : p.goal_prob >= 15 ? 'var(--yellow)' : 'var(--orange)';
+      const probColor = p.goal_prob >= 25 ? 'var(--green)' : p.goal_prob >= 12 ? 'var(--yellow)' : 'var(--orange)';
+
+      // Bars — use history if available, ai_score as fallback
+      const xgW    = p.xg_p90    != null ? Math.min(p.xg_p90 * 50, 100)    : Math.min((p.ai_score||0) * 60, 100);
+      const sotW   = p.sot_p90   != null ? Math.min(p.sot_p90 * 70, 100)   : Math.min((p.ai_score||0) * 40, 100);
+      const shotW  = p.shots_p90 != null ? Math.min(p.shots_p90 * 35, 100) : Math.min((p.ai_score||0) * 50, 100);
+
+      const xgTxt    = p.xg_p90    != null ? p.xg_p90    : '—';
+      const sotTxt   = p.sot_p90   != null ? p.sot_p90   : '—';
+      const shotTxt  = p.shots_p90 != null ? p.shots_p90 : '—';
+      const histNote = p.has_history
+        ? p.matches + ' ptdos &middot; ' + p.goals_total + '&#9917; ' + p.assists_total + '&#127280; &middot; Rating ' + (p.avg_rating||'—')
+        : '<span style="color:var(--td);font-style:italic">Sin historial — estimado por posición</span>';
+
+      const num = p.jersey_number ? '<span style="font-size:11px;color:var(--td);margin-right:2px">' + p.jersey_number + '</span>' : '';
+
       return '<div class="pt-card ' + (isTop?'top':'') + '">' +
         '<div class="pt-rank ' + rankClass + '">' + (i+1) + '</div>' +
         '<div class="pt-info">' +
-          '<div class="pt-name">' + p.name + '</div>' +
-          '<div class="pt-meta">' + p.position + ' &middot; ' + p.matches + ' partidos &middot; Rating ' + (p.avg_rating||'--') + ' &middot; ' + p.goals_total + '&#9917; ' + p.assists_total + '&#127280;</div>' +
-          '<div class="pt-bars" style="margin-top:5px">' +
-            '<div class="pt-bar-row"><span class="pt-bar-label">xG</span><div class="pt-bar-track"><div class="pt-bar-fill" style="width:' + xgW + '%;background:var(--green)"></div></div><span style="min-width:30px;text-align:right;font-size:11px;color:var(--t)">' + p.xg_p90 + '</span></div>' +
-            '<div class="pt-bar-row"><span class="pt-bar-label">SOT</span><div class="pt-bar-track"><div class="pt-bar-fill" style="width:' + sotW + '%;background:var(--blue)"></div></div><span style="min-width:30px;text-align:right;font-size:11px;color:var(--t)">' + p.sot_p90 + '</span></div>' +
-            '<div class="pt-bar-row"><span class="pt-bar-label">TIR</span><div class="pt-bar-track"><div class="pt-bar-fill" style="width:' + shotW + '%;background:var(--purple)"></div></div><span style="min-width:30px;text-align:right;font-size:11px;color:var(--t)">' + p.shots_p90 + '</span></div>' +
+          '<div class="pt-name">' + num + p.name + '</div>' +
+          '<div class="pt-meta">' + p.position + ' &middot; ' + histNote + '</div>' +
+          '<div class="pt-bars" style="margin-top:6px">' +
+            '<div class="pt-bar-row"><span class="pt-bar-label">xG/90</span><div class="pt-bar-track"><div class="pt-bar-fill" style="width:' + xgW + '%;background:var(--green)"></div></div><span style="min-width:32px;text-align:right;font-size:11px;color:var(--t)">' + xgTxt + '</span></div>' +
+            '<div class="pt-bar-row"><span class="pt-bar-label">SOT/90</span><div class="pt-bar-track"><div class="pt-bar-fill" style="width:' + sotW + '%;background:var(--blue)"></div></div><span style="min-width:32px;text-align:right;font-size:11px;color:var(--t)">' + sotTxt + '</span></div>' +
+            '<div class="pt-bar-row"><span class="pt-bar-label">TIR/90</span><div class="pt-bar-track"><div class="pt-bar-fill" style="width:' + shotW + '%;background:var(--purple)"></div></div><span style="min-width:32px;text-align:right;font-size:11px;color:var(--t)">' + shotTxt + '</span></div>' +
           '</div>' +
         '</div>' +
         '<div class="pt-prob">' +
           '<div class="pt-prob-val" style="color:' + probColor + '">' + p.goal_prob + '%</div>' +
-          '<div class="pt-prob-lbl">marcar</div>' +
+          '<div class="pt-prob-lbl">de marcar</div>' +
         '</div>' +
       '</div>';
     }).join('');
 
-    return '<div style="margin-bottom:1.25rem">' +
-      '<div class="sec-hdr">' + teamName + ' &mdash; Amenaza ofensiva (por 90 min)</div>' +
-      '<div style="font-size:12px;color:var(--tm);margin-bottom:.75rem">xG, remates al arco (SOT) y remates totales (TIR) por 90 min &middot; % de marcar estimado por partido</div>' +
+    return '<div style="margin-bottom:1.5rem">' +
+      '<div class="sec-hdr">' + teamName + ' &mdash; Amenaza ofensiva' + lBadge + '</div>' +
+      '<div style="font-size:12px;color:var(--tm);margin-bottom:.75rem">Jugadores del XI ordenados por amenaza. xG/SOT/TIR por 90 min cuando hay historial; estimado por posición cuando no.</div>' +
       '<div class="player-threat-list">' + cards + '</div>' +
     '</div>';
   }
   return teamSection(hps, ev.home_team) + teamSection(aps, ev.away_team);
+}
+
+
+// ── TICKET BUILDER ────────────────────────────────
+const ticket = { legs: [] }; // { market, prob, source }
+
+function ticketAdd(market, prob, source) {
+  if (ticket.legs.find(l => l.market === market)) return;
+  ticket.legs.push({ market, prob, source });
+  const tab = document.getElementById('tab-ticket');
+  if (tab) tab.innerHTML = renderTicketContent();
+}
+
+function ticketRemove(market) {
+  ticket.legs = ticket.legs.filter(l => l.market !== market);
+  const tab = document.getElementById('tab-ticket');
+  if (tab) tab.innerHTML = renderTicketContent();
+}
+
+function ticketClear() {
+  ticket.legs = [];
+  const tab = document.getElementById('tab-ticket');
+  if (tab) tab.innerHTML = renderTicketContent();
+}
+
+function renderTicketContent() {
+  const legs = ticket.legs;
+  const combined = legs.length
+    ? Math.round(legs.reduce((acc, l) => acc * (l.prob / 100), 1) * 100 * 10) / 10
+    : null;
+  const probColor = combined >= 50 ? 'var(--green)' : combined >= 25 ? 'var(--yellow)' : 'var(--red)';
+  const impliedOdds = combined ? (1 / (combined / 100)).toFixed(2) : null;
+
+  const legsHTML = legs.length ? legs.map(l =>
+    '<div class="ticket-leg">' +
+      '<div class="tl-market">' + l.market + '</div>' +
+      '<div class="tl-prob">' + l.prob + '%</div>' +
+      '<button class="tl-remove" onclick="ticketRemove(' + JSON.stringify(l.market) + ')">✕</button>' +
+    '</div>'
+  ).join('') : '<div class="no-data" style="padding:.5rem 0">Agrega selecciones usando el botón + en cada mercado</div>';
+
+  const resultHTML = combined != null ? `
+    <div class="ticket-result">
+      <div class="tr-combined">
+        <div class="tr-prob" style="color:${probColor}">${combined}%</div>
+        <div class="tr-label">probabilidad combinada</div>
+      </div>
+      <div class="tr-note">Cuota implícita: ${impliedOdds} · ${legs.length} selección${legs.length !== 1 ? 'es' : ''}</div>
+    </div>` : '';
+
+  return '<div class="ticket-wrap">' +
+    '<div class="ticket-header">' +
+      '<div class="ticket-title">🎫 Mi Ticket (' + legs.length + ')</div>' +
+      '<button class="ticket-clear" onclick="ticketClear()">Limpiar</button>' +
+    '</div>' +
+    '<div class="ticket-legs">' + legsHTML + '</div>' +
+    resultHTML +
+  '</div>';
+}
+
+function tabTicket(d) {
+  const { event:ev, ensemble, poisson, bets, histStats } = d;
+
+  // Build available markets to add
+  const markets = [];
+
+  // Result markets
+  if (ensemble) {
+    markets.push({ market: 'Victoria ' + ev.home_team, prob: ensemble.home, cat:'Resultado' });
+    markets.push({ market: 'Empate', prob: ensemble.draw, cat:'Resultado' });
+    markets.push({ market: 'Victoria ' + ev.away_team, prob: ensemble.away, cat:'Resultado' });
+  }
+
+  // Goals
+  if (poisson) {
+    markets.push({ market: 'Over 0.5 goles', prob: Math.min(Math.round(poisson.over15 * 1.08), 99), cat:'Goles' });
+    markets.push({ market: 'Over 1.5 goles', prob: poisson.over15, cat:'Goles' });
+    markets.push({ market: 'Over 2.5 goles', prob: poisson.over25, cat:'Goles' });
+    markets.push({ market: 'Over 3.5 goles', prob: poisson.over35, cat:'Goles' });
+    markets.push({ market: 'BTTS (ambos marcan)', prob: poisson.btts, cat:'Goles' });
+    markets.push({ market: 'Under 2.5 goles', prob: Math.round(100 - poisson.over25), cat:'Goles' });
+  }
+
+  // Corners
+  if (histStats?.corners?.lines) {
+    histStats.corners.lines.forEach(l => {
+      markets.push({ market: 'Corners Over ' + l.line, prob: l.over_pct, cat:'Corners' });
+    });
+  }
+
+  // Cards
+  if (histStats?.cards?.lines) {
+    histStats.cards.lines.forEach(l => {
+      markets.push({ market: 'Tarjetas Over ' + l.line, prob: l.over_pct, cat:'Tarjetas' });
+    });
+  }
+
+  // Group by category
+  const cats = ['Resultado', 'Goles', 'Corners', 'Tarjetas'];
+  const grouped = {};
+  cats.forEach(c => { grouped[c] = markets.filter(m => m.cat === c); });
+
+  const addSections = cats.map(cat => {
+    const ms = grouped[cat];
+    if (!ms.length) return '';
+    const btns = ms.map(m => {
+      const inTicket = ticket.legs.find(l => l.market === m.market);
+      const pCol = m.prob >= 65 ? 'var(--green)' : m.prob >= 40 ? 'var(--yellow)' : 'var(--red)';
+      return '<button class="add-bet-btn ' + (inTicket?'added':'') + '" onclick="' + (inTicket?'ticketRemove':'ticketAdd') + '(' + JSON.stringify(m.market) + ',' + m.prob + ',' + JSON.stringify(cat) + ')">' +
+        '<span>' + (inTicket ? '✓ ' : '+ ') + m.market + '</span>' +
+        '<span class="ab-prob" style="color:' + pCol + '">' + m.prob + '%</span>' +
+      '</button>';
+    }).join('');
+    return '<div class="ticket-add-section"><div class="ta-label">' + cat + '</div><div class="add-bet-grid">' + btns + '</div></div>';
+  }).join('');
+
+  return renderTicketContent() +
+    '<div class="card" style="margin-top:.875rem">' +
+      '<div class="sec-hdr">Agregar al ticket</div>' +
+      '<div style="font-size:12px;color:var(--tm);margin-bottom:.875rem">Click en cualquier mercado para agregarlo. La probabilidad combinada se calcula asumiendo independencia entre selecciones.</div>' +
+      addSections +
+    '</div>';
 }
 
 // INIT
