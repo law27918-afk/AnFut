@@ -301,13 +301,34 @@ body{background:var(--bg);color:var(--t);font-family:'Inter',sans-serif;font-siz
 .tr-prob{font-family:'Space Grotesk',sans-serif;font-size:32px;font-weight:700}
 .tr-label{font-size:13px;color:var(--tm)}
 .tr-note{font-size:12px;color:var(--td)}
-.ticket-add-section{margin-bottom:.875rem}
-.ta-label{font-size:11px;color:var(--tm);text-transform:uppercase;letter-spacing:.07em;margin-bottom:.625rem;font-weight:500}
-.add-bet-grid{display:flex;flex-direction:column;gap:5px}
-.add-bet-btn{background:var(--s2);border:.5px solid var(--bd);border-radius:var(--r);padding:.625rem 1rem;text-align:left;cursor:pointer;font-size:13px;color:var(--t);display:flex;justify-content:space-between;align-items:center;transition:border-color .15s}
-.add-bet-btn:hover{border-color:var(--green);background:rgba(61,220,132,.04)}
-.add-bet-btn.added{border-color:rgba(61,220,132,.4);background:rgba(61,220,132,.06);color:var(--green)}
-.ab-prob{font-size:12px;color:var(--tm)}
+/* selector blocks */
+.tkt-section{background:var(--s2);border-radius:var(--rl);padding:1rem 1.25rem;margin-bottom:.75rem}
+.tkt-sec-label{font-size:11px;color:var(--tm);text-transform:uppercase;letter-spacing:.08em;font-weight:600;margin-bottom:.75rem}
+/* result buttons */
+.result-btn-grid{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px;margin-bottom:6px}
+.result-btn-grid2{display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px}
+.res-btn{background:var(--s1);border:.5px solid var(--bd);border-radius:var(--r);padding:.625rem .5rem;text-align:center;cursor:pointer;transition:all .15s;font-size:13px;color:var(--t)}
+.res-btn:hover{border-color:var(--bds)}
+.res-btn.sel{border-color:var(--green);background:rgba(61,220,132,.1);color:var(--green);font-weight:500}
+.res-btn .rb-label{font-size:11px;color:inherit;opacity:.8;margin-bottom:2px}
+.res-btn .rb-prob{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700}
+/* toggle */
+.tog-row{display:flex;gap:6px}
+.tog-btn{flex:1;background:var(--s1);border:.5px solid var(--bd);border-radius:var(--r);padding:.625rem;text-align:center;cursor:pointer;font-size:13px;color:var(--t);transition:all .15s}
+.tog-btn.sel{border-color:var(--green);background:rgba(61,220,132,.1);color:var(--green);font-weight:500}
+/* stepper */
+.stepper-row{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.step-label{flex:1;font-size:13px;color:var(--t);font-weight:500}
+.step-controls{display:flex;align-items:center;gap:6px}
+.step-btn{width:30px;height:30px;border-radius:50%;background:var(--s1);border:.5px solid var(--bds);color:var(--t);font-size:18px;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:all .15s;line-height:1;font-weight:300}
+.step-btn:hover{background:var(--s3);border-color:var(--green)}
+.step-btn:disabled{opacity:.3;cursor:not-allowed}
+.step-val{font-family:'Space Grotesk',sans-serif;font-size:15px;font-weight:700;color:#fff;min-width:32px;text-align:center}
+.step-ou{display:flex;gap:6px}
+.step-ou-btn{flex:1;background:var(--s1);border:.5px solid var(--bd);border-radius:var(--r);padding:5px 8px;text-align:center;cursor:pointer;font-size:12px;color:var(--tm);transition:all .15s}
+.step-ou-btn.sel{border-color:var(--green);background:rgba(61,220,132,.1);color:var(--green);font-weight:500}
+.step-ou-btn .sou-dir{font-size:11px;opacity:.8}
+.step-ou-btn .sou-prob{font-family:'Space Grotesk',sans-serif;font-size:14px;font-weight:700;color:inherit}
 </style>
 </head>
 <body>
@@ -1123,124 +1144,259 @@ function tabJugadores({ event:ev, homePlayerStats:hps, awayPlayerStats:aps, line
 
 
 // ── TICKET BUILDER ────────────────────────────────
-const ticket = { legs: [] }; // { market, prob, source }
+// State: legs + stepper selections
+const ticket = { legs: [] };
+const tktSel = {
+  result:  null,   // 'home'|'draw'|'away'|'home_draw'|'home_away'|'draw_away'
+  btts:    null,   // 'yes'|'no'
+  goals:   { line: 2.5, dir: null },    // dir: 'over'|'under'
+  corners: { line: 8.5, dir: null },
+  cards:   { line: 2.5, dir: null },
+  offsides:{ line: 3.5, dir: null },
+};
 
-function ticketAdd(market, prob, source) {
-  if (ticket.legs.find(l => l.market === market)) return;
-  ticket.legs.push({ market, prob, source });
+// Stepper line options
+const GOAL_LINES    = [0.5, 1.5, 2.5, 3.5, 4.5];
+const CORNER_LINES  = [4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5];
+const CARD_LINES    = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5];
+const OFFSIDE_LINES = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5];
+
+function stepLine(type, delta) {
+  const maps = { goals: GOAL_LINES, corners: CORNER_LINES, cards: CARD_LINES, offsides: OFFSIDE_LINES };
+  const lines = maps[type];
+  const cur = tktSel[type].line;
+  const idx = lines.indexOf(cur);
+  const nidx = Math.max(0, Math.min(lines.length-1, idx + delta));
+  tktSel[type].line = lines[nidx];
+  rerenderTicket();
+}
+
+function setDir(type, dir) {
+  tktSel[type].dir = tktSel[type].dir === dir ? null : dir;
+  rerenderTicket();
+}
+
+function setResult(val) {
+  tktSel.result = tktSel.result === val ? null : val;
+  rerenderTicket();
+}
+
+function setBtts(val) {
+  tktSel.btts = tktSel.btts === val ? null : val;
+  rerenderTicket();
+}
+
+function rerenderTicket() {
   const tab = document.getElementById('tab-ticket');
-  if (tab) tab.innerHTML = renderTicketContent();
+  if (tab && tab.classList.contains('active')) {
+    tab.innerHTML = renderTicketInner(window._tktData);
+  }
 }
 
-function ticketRemove(market) {
-  ticket.legs = ticket.legs.filter(l => l.market !== market);
-  const tab = document.getElementById('tab-ticket');
-  if (tab) tab.innerHTML = renderTicketContent();
-}
+function buildTicketLegs(d) {
+  const { event:ev, ensemble, poisson, histStats } = d;
+  const legs = [];
+  const pCol = p => p >= 60 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)';
 
-function ticketClear() {
-  ticket.legs = [];
-  const tab = document.getElementById('tab-ticket');
-  if (tab) tab.innerHTML = renderTicketContent();
-}
+  // Result
+  if (tktSel.result && ensemble) {
+    const map = {
+      home:      { label: 'Gana ' + ev.home_team,                     prob: ensemble.home },
+      draw:      { label: 'Empate',                                    prob: ensemble.draw },
+      away:      { label: 'Gana ' + ev.away_team,                     prob: ensemble.away },
+      home_draw: { label: ev.home_team + ' o Empate (1X)',             prob: Math.round(ensemble.home + ensemble.draw) },
+      home_away: { label: ev.home_team + ' o ' + ev.away_team + ' (12)', prob: Math.round(ensemble.home + ensemble.away) },
+      draw_away: { label: 'Empate o ' + ev.away_team + ' (X2)',        prob: Math.round(ensemble.draw + ensemble.away) },
+    };
+    const m = map[tktSel.result];
+    if (m) legs.push({ key:'result', market: m.label, prob: m.prob });
+  }
 
-function renderTicketContent() {
-  const legs = ticket.legs;
-  const combined = legs.length
-    ? Math.round(legs.reduce((acc, l) => acc * (l.prob / 100), 1) * 100 * 10) / 10
-    : null;
-  const probColor = combined >= 50 ? 'var(--green)' : combined >= 25 ? 'var(--yellow)' : 'var(--red)';
-  const impliedOdds = combined ? (1 / (combined / 100)).toFixed(2) : null;
-
-  const legsHTML = legs.length ? legs.map(l =>
-    '<div class="ticket-leg">' +
-      '<div class="tl-market">' + l.market + '</div>' +
-      '<div class="tl-prob">' + l.prob + '%</div>' +
-      '<button class="tl-remove" onclick="ticketRemove(' + JSON.stringify(l.market) + ')">✕</button>' +
-    '</div>'
-  ).join('') : '<div class="no-data" style="padding:.5rem 0">Agrega selecciones usando el botón + en cada mercado</div>';
-
-  const resultHTML = combined != null ? `
-    <div class="ticket-result">
-      <div class="tr-combined">
-        <div class="tr-prob" style="color:${probColor}">${combined}%</div>
-        <div class="tr-label">probabilidad combinada</div>
-      </div>
-      <div class="tr-note">Cuota implícita: ${impliedOdds} · ${legs.length} selección${legs.length !== 1 ? 'es' : ''}</div>
-    </div>` : '';
-
-  return '<div class="ticket-wrap">' +
-    '<div class="ticket-header">' +
-      '<div class="ticket-title">🎫 Mi Ticket (' + legs.length + ')</div>' +
-      '<button class="ticket-clear" onclick="ticketClear()">Limpiar</button>' +
-    '</div>' +
-    '<div class="ticket-legs">' + legsHTML + '</div>' +
-    resultHTML +
-  '</div>';
-}
-
-function tabTicket(d) {
-  const { event:ev, ensemble, poisson, bets, histStats } = d;
-
-  // Build available markets to add
-  const markets = [];
-
-  // Result markets
-  if (ensemble) {
-    markets.push({ market: 'Victoria ' + ev.home_team, prob: ensemble.home, cat:'Resultado' });
-    markets.push({ market: 'Empate', prob: ensemble.draw, cat:'Resultado' });
-    markets.push({ market: 'Victoria ' + ev.away_team, prob: ensemble.away, cat:'Resultado' });
+  // BTTS
+  if (tktSel.btts && poisson) {
+    const prob = tktSel.btts === 'yes' ? poisson.btts : Math.round(100 - poisson.btts);
+    legs.push({ key:'btts', market: 'Ambos marcan: ' + (tktSel.btts==='yes'?'Sí':'No'), prob });
   }
 
   // Goals
-  if (poisson) {
-    markets.push({ market: 'Over 0.5 goles', prob: Math.min(Math.round(poisson.over15 * 1.08), 99), cat:'Goles' });
-    markets.push({ market: 'Over 1.5 goles', prob: poisson.over15, cat:'Goles' });
-    markets.push({ market: 'Over 2.5 goles', prob: poisson.over25, cat:'Goles' });
-    markets.push({ market: 'Over 3.5 goles', prob: poisson.over35, cat:'Goles' });
-    markets.push({ market: 'BTTS (ambos marcan)', prob: poisson.btts, cat:'Goles' });
-    markets.push({ market: 'Under 2.5 goles', prob: Math.round(100 - poisson.over25), cat:'Goles' });
+  if (tktSel.goals.dir && poisson) {
+    const line = tktSel.goals.line;
+    const overProb = line === 0.5 ? Math.min(Math.round(poisson.over15*1.08),99)
+      : line === 1.5 ? poisson.over15
+      : line === 2.5 ? poisson.over25
+      : line === 3.5 ? poisson.over35
+      : Math.max(5, Math.round(poisson.over35 * 0.4));
+    const prob = tktSel.goals.dir === 'over' ? overProb : Math.round(100 - overProb);
+    legs.push({ key:'goals', market: (tktSel.goals.dir==='over'?'Over ':'Under ') + line + ' goles', prob });
   }
 
   // Corners
-  if (histStats?.corners?.lines) {
-    histStats.corners.lines.forEach(l => {
-      markets.push({ market: 'Corners Over ' + l.line, prob: l.over_pct, cat:'Corners' });
-    });
+  if (tktSel.corners.dir && histStats?.corners) {
+    const line = tktSel.corners.line;
+    const found = histStats.corners.lines.find(l => l.line === line);
+    const overProb = found ? found.over_pct : Math.round(histStats.corners.lines.slice(-1)[0]?.over_pct || 30);
+    const prob = tktSel.corners.dir === 'over' ? overProb : Math.round(100 - overProb);
+    legs.push({ key:'corners', market: (tktSel.corners.dir==='over'?'Over ':'Under ') + line + ' corners', prob });
   }
 
   // Cards
-  if (histStats?.cards?.lines) {
-    histStats.cards.lines.forEach(l => {
-      markets.push({ market: 'Tarjetas Over ' + l.line, prob: l.over_pct, cat:'Tarjetas' });
-    });
+  if (tktSel.cards.dir && histStats?.cards) {
+    const line = tktSel.cards.line;
+    const found = histStats.cards.lines.find(l => l.line === line);
+    const overProb = found ? found.over_pct : 50;
+    const prob = tktSel.cards.dir === 'over' ? overProb : Math.round(100 - overProb);
+    legs.push({ key:'cards', market: (tktSel.cards.dir==='over'?'Over ':'Under ') + line + ' tarjetas', prob });
   }
 
-  // Group by category
-  const cats = ['Resultado', 'Goles', 'Corners', 'Tarjetas'];
-  const grouped = {};
-  cats.forEach(c => { grouped[c] = markets.filter(m => m.cat === c); });
+  return legs;
+}
 
-  const addSections = cats.map(cat => {
-    const ms = grouped[cat];
-    if (!ms.length) return '';
-    const btns = ms.map(m => {
-      const inTicket = ticket.legs.find(l => l.market === m.market);
-      const pCol = m.prob >= 65 ? 'var(--green)' : m.prob >= 40 ? 'var(--yellow)' : 'var(--red)';
-      return '<button class="add-bet-btn ' + (inTicket?'added':'') + '" onclick="' + (inTicket?'ticketRemove':'ticketAdd') + '(' + JSON.stringify(m.market) + ',' + m.prob + ',' + JSON.stringify(cat) + ')">' +
-        '<span>' + (inTicket ? '✓ ' : '+ ') + m.market + '</span>' +
-        '<span class="ab-prob" style="color:' + pCol + '">' + m.prob + '%</span>' +
-      '</button>';
-    }).join('');
-    return '<div class="ticket-add-section"><div class="ta-label">' + cat + '</div><div class="add-bet-grid">' + btns + '</div></div>';
-  }).join('');
+function renderTicketInner(d) {
+  if (!d) return '<div class="no-data">Carga un partido primero.</div>';
+  const { event:ev, ensemble, poisson, histStats } = d;
 
-  return renderTicketContent() +
-    '<div class="card" style="margin-top:.875rem">' +
-      '<div class="sec-hdr">Agregar al ticket</div>' +
-      '<div style="font-size:12px;color:var(--tm);margin-bottom:.875rem">Click en cualquier mercado para agregarlo. La probabilidad combinada se calcula asumiendo independencia entre selecciones.</div>' +
-      addSections +
-    '</div>';
+  const legs = buildTicketLegs(d);
+  const combined = legs.length
+    ? Math.round(legs.reduce((a, l) => a * (l.prob/100), 1) * 1000) / 10
+    : null;
+  const pCol = p => p >= 60 ? 'var(--green)' : p >= 40 ? 'var(--yellow)' : 'var(--red)';
+
+  // Ticket summary
+  const summaryHTML = `
+    <div class="ticket-wrap">
+      <div class="ticket-header">
+        <div class="ticket-title">🎫 Mi Ticket ${legs.length ? '('+legs.length+' sel.)' : ''}</div>
+        <button class="ticket-clear" onclick="resetTicket()">Limpiar</button>
+      </div>
+      <div class="ticket-legs">
+        ${legs.length ? legs.map(l => `
+          <div class="ticket-leg">
+            <div class="tl-market">${l.market}</div>
+            <div class="tl-prob" style="color:${pCol(l.prob)}">${l.prob}%</div>
+          </div>`).join('') : '<div class="no-data">Selecciona mercados abajo para armar tu ticket</div>'}
+      </div>
+      ${combined != null ? `
+        <div class="ticket-result">
+          <div class="tr-combined">
+            <div class="tr-prob" style="color:${pCol(combined)}">${combined}%</div>
+            <div class="tr-label">probabilidad combinada</div>
+          </div>
+          <div class="tr-note">Cuota implícita: ${(1/(combined/100)).toFixed(2)} · ${legs.length} selección${legs.length!==1?'es':''}</div>
+        </div>` : ''}
+    </div>`;
+
+  // ── RESULTADO ──
+  const ens = ensemble || {};
+  const rMap = {
+    home:      { label: ev.home_team,       sub:'1',  prob: ens.home },
+    draw:      { label: 'Empate',            sub:'X',  prob: ens.draw },
+    away:      { label: ev.away_team,        sub:'2',  prob: ens.away },
+    home_draw: { label: '1X',               sub:'Doble', prob: ens.home!=null?Math.round(ens.home+ens.draw):null },
+    home_away: { label: '12',               sub:'Doble', prob: ens.home!=null?Math.round(ens.home+ens.away):null },
+    draw_away: { label: 'X2',               sub:'Doble', prob: ens.draw!=null?Math.round(ens.draw+ens.away):null },
+  };
+  const resHTML = Object.entries(rMap).map(([k, v]) => {
+    const sel = tktSel.result === k;
+    const prob = v.prob;
+    return `<div class="res-btn ${sel?'sel':''}" onclick="setResult('${k}')">
+      <div class="rb-label">${v.sub}</div>
+      <div style="font-size:12px;font-weight:500;margin:2px 0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${v.label}</div>
+      <div class="rb-prob" style="color:${prob?pCol(prob):'var(--td)'}">${prob!=null?prob+'%':'—'}</div>
+    </div>`;
+  });
+
+  // ── STEPPER helper ──
+  function stepper(type, lines, label, getProbs) {
+    const st = tktSel[type];
+    const idx = lines.indexOf(st.line);
+    const canDown = idx > 0, canUp = idx < lines.length - 1;
+    const { over, under } = getProbs(st.line);
+    return `
+      <div class="stepper-row">
+        <div class="step-label">${label}</div>
+        <div class="step-controls">
+          <button class="step-btn" onclick="stepLine('${type}',-1)" ${canDown?'':'disabled'}>−</button>
+          <div class="step-val">${st.line}</div>
+          <button class="step-btn" onclick="stepLine('${type}',1)" ${canUp?'':'disabled'}>+</button>
+        </div>
+      </div>
+      <div class="step-ou">
+        <div class="step-ou-btn ${st.dir==='over'?'sel':''}" onclick="setDir('${type}','over')">
+          <div class="sou-dir">Over</div>
+          <div class="sou-prob">${over!=null?over+'%':'—'}</div>
+        </div>
+        <div class="step-ou-btn ${st.dir==='under'?'sel':''}" onclick="setDir('${type}','under')">
+          <div class="sou-dir">Under</div>
+          <div class="sou-prob">${under!=null?under+'%':'—'}</div>
+        </div>
+      </div>`;
+  }
+
+  // Goals probs
+  function goalProbs(line) {
+    if (!poisson) return { over: null, under: null };
+    const over = line===0.5 ? Math.min(Math.round(poisson.over15*1.08),99)
+      : line===1.5 ? poisson.over15 : line===2.5 ? poisson.over25
+      : line===3.5 ? poisson.over35 : Math.max(5, Math.round(poisson.over35*0.4));
+    return { over, under: Math.round(100-over) };
+  }
+
+  // OU from histStats
+  function histProbs(type, line) {
+    const data = histStats?.[type];
+    if (!data) return { over: null, under: null };
+    const found = data.lines.find(l => l.line === line);
+    if (!found) return { over: null, under: null };
+    return { over: found.over_pct, under: found.under_pct };
+  }
+
+  return summaryHTML + `
+    <div class="tkt-section">
+      <div class="tkt-sec-label">Resultado</div>
+      <div class="result-btn-grid">${resHTML.slice(0,3).join('')}</div>
+      <div class="result-btn-grid2">${resHTML.slice(3).join('')}</div>
+    </div>
+
+    <div class="tkt-section">
+      <div class="tkt-sec-label">Ambos marcan</div>
+      <div class="tog-row">
+        <div class="tog-btn ${tktSel.btts==='yes'?'sel':''}" onclick="setBtts('yes')">
+          Sí &nbsp;<span style="font-weight:700;color:inherit">${poisson?poisson.btts+'%':'—'}</span>
+        </div>
+        <div class="tog-btn ${tktSel.btts==='no'?'sel':''}" onclick="setBtts('no')">
+          No &nbsp;<span style="font-weight:700;color:inherit">${poisson?Math.round(100-poisson.btts)+'%':'—'}</span>
+        </div>
+      </div>
+    </div>
+
+    <div class="tkt-section">
+      <div class="tkt-sec-label">Goles</div>
+      ${stepper('goals', GOAL_LINES, 'Línea de goles', goalProbs)}
+    </div>
+
+    <div class="tkt-section">
+      <div class="tkt-sec-label">Corners</div>
+      ${stepper('corners', CORNER_LINES, 'Línea de corners', l => histProbs('corners', l))}
+      ${histStats?.corners ? `<div style="font-size:11px;color:var(--td);margin-top:6px">Prom. histórico: ${histStats.corners.avg} corners/partido</div>` : ''}
+    </div>
+
+    <div class="tkt-section">
+      <div class="tkt-sec-label">Tarjetas</div>
+      ${stepper('cards', CARD_LINES, 'Línea de tarjetas', l => histProbs('cards', l))}
+      ${histStats?.cards ? `<div style="font-size:11px;color:var(--td);margin-top:6px">Prom. histórico: ${histStats.cards.avg} tarjetas/partido</div>` : ''}
+    </div>`;
+}
+
+function resetTicket() {
+  tktSel.result = null; tktSel.btts = null;
+  tktSel.goals.dir = null; tktSel.corners.dir = null;
+  tktSel.cards.dir = null;
+  rerenderTicket();
+}
+
+function tabTicket(d) {
+  window._tktData = d;
+  return renderTicketInner(d);
 }
 
 // INIT
