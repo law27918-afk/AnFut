@@ -448,30 +448,62 @@ function calcTrap(homeStats, awayStats, lineups, prediction, event, h2h, ensembl
 // HISTORICAL STATS (corners, cards, offsides)
 // ═══════════════════════════════════════════════════════════════
 
-async function fetchHistoricalStats(eventIds) {
+async function fetchHistoricalStats(eventIds, homeTeamId, awayTeamId) {
   if (!eventIds?.length) return null;
 
   const results = await Promise.all(
     eventIds.map(id => safe(bsd(`/events/${id}/stats/`)))
   );
 
+  // Full match accumulators
   let corners=0, yellows=0, reds=0, offsides=0, count=0;
   const cL=[], yL=[], oL=[];
+
+  // Corner winner accumulators (home = team playing as home in that match)
+  let cornerWinHome=0, cornerWinAway=0, cornerWinTie=0;
+
+  // First half accumulators
+  let htCorners=0, htYellows=0, htCount=0;
+  const htCL=[], htYL=[];
+  let htCornerWinHome=0, htCornerWinAway=0, htCornerWinTie=0;
 
   results.forEach(stats => {
     if (!stats) return;
     const home = stats.stats?.home || stats.home || {};
     const away = stats.stats?.away || stats.away || {};
+    const fhHome = stats.stats?.first_half?.home || stats.first_half?.home || {};
+    const fhAway = stats.stats?.first_half?.away || stats.first_half?.away || {};
 
-    const tc = (home.corner_kicks || 0) + (away.corner_kicks || 0);
-    const ty = (home.yellow_cards || 0) + (away.yellow_cards || 0);
-    const tr = (home.red_cards    || 0) + (away.red_cards    || 0);
-    const to = (home.offsides     || 0) + (away.offsides     || 0);
+    // Full match
+    const tc  = (home.corner_kicks || 0) + (away.corner_kicks || 0);
+    const ty  = (home.yellow_cards || 0) + (away.yellow_cards || 0);
+    const tr  = (home.red_cards    || 0) + (away.red_cards    || 0);
+    const to  = (home.offsides     || 0) + (away.offsides     || 0);
+    const hc  = home.corner_kicks || 0;
+    const ac  = away.corner_kicks || 0;
 
     if (ty > 0 || to > 0 || tc > 0) {
       corners += tc; yellows += ty; reds += tr; offsides += to;
       count++;
       cL.push(tc); yL.push(ty); oL.push(to);
+      // Corner winner full match
+      if (hc > ac) cornerWinHome++;
+      else if (ac > hc) cornerWinAway++;
+      else cornerWinTie++;
+    }
+
+    // First half
+    const fhTC = (fhHome.corner_kicks || 0) + (fhAway.corner_kicks || 0);
+    const fhTY = (fhHome.yellow_cards || 0) + (fhAway.yellow_cards || 0);
+    const fhHC = fhHome.corner_kicks || 0;
+    const fhAC = fhAway.corner_kicks || 0;
+
+    if (fhTY > 0 || fhTC > 0) {
+      htCorners += fhTC; htYellows += fhTY; htCount++;
+      htCL.push(fhTC); htYL.push(fhTY);
+      if (fhHC > fhAC) htCornerWinHome++;
+      else if (fhAC > fhHC) htCornerWinAway++;
+      else htCornerWinTie++;
     }
   });
 
@@ -484,34 +516,62 @@ async function fetchHistoricalStats(eventIds) {
   function overPct(list, line) {
     return !list.length ? 0 : Math.round(list.filter(v => v > line).length / list.length * 100);
   }
-
-  // Conservative rec_line: pick the line ~75-80% of avg (safer bet)
   function conservativeRecLine(avg, lines) {
-    const target = avg * 0.78; // 78% of avg = conservative
+    const target = avg * 0.78;
     return lines.reduce((b, l) => Math.abs(l - target) < Math.abs(b - target) ? l : b);
   }
 
-  const cornerLines   = [4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5];
-  const cardLines     = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5];
-  const offsidesLines = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5];
+  const cornerLines    = [4.5, 5.5, 6.5, 7.5, 8.5, 9.5, 10.5, 11.5, 12.5];
+  const cardLines      = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5];
+  const offsidesLines  = [0.5, 1.5, 2.5, 3.5, 4.5, 5.5, 6.5];
+  const htCornerLines  = [1.5, 2.5, 3.5, 4.5, 5.5, 6.5];
+  const htCardLines    = [0.5, 1.5, 2.5, 3.5];
+
+  // Corner winner probabilities
+  const cwTotal = cornerWinHome + cornerWinAway + cornerWinTie || 1;
+  const htCwTotal = htCornerWinHome + htCornerWinAway + htCornerWinTie || 1;
 
   return {
     matches: count,
     corners: {
       avg: avgC,
       rec_line: conservativeRecLine(avgC, cornerLines),
-      lines: cornerLines.map(l => ({ line: l, over_pct: overPct(cL, l), under_pct: 100 - overPct(cL, l) })),
+      lines: cornerLines.map(l => ({ line:l, over_pct:overPct(cL,l), under_pct:100-overPct(cL,l) })),
+      winner: {
+        home_pct: Math.round(cornerWinHome / cwTotal * 100),
+        away_pct: Math.round(cornerWinAway / cwTotal * 100),
+        tie_pct:  Math.round(cornerWinTie  / cwTotal * 100),
+        matches:  count,
+      },
     },
+    corners_ht: htCount > 0 ? {
+      avg: +(htCorners / htCount).toFixed(1),
+      matches: htCount,
+      rec_line: conservativeRecLine(htCorners / htCount, htCornerLines),
+      lines: htCornerLines.map(l => ({ line:l, over_pct:overPct(htCL,l), under_pct:100-overPct(htCL,l) })),
+      winner: {
+        home_pct: Math.round(htCornerWinHome / htCwTotal * 100),
+        away_pct: Math.round(htCornerWinAway / htCwTotal * 100),
+        tie_pct:  Math.round(htCornerWinTie  / htCwTotal * 100),
+        matches:  htCount,
+      },
+    } : null,
     cards: {
       avg: avgY,
       avg_red: +(reds / count).toFixed(1),
       rec_line: conservativeRecLine(avgY, cardLines),
-      lines: cardLines.map(l => ({ line: l, over_pct: overPct(yL, l), under_pct: 100 - overPct(yL, l) })),
+      lines: cardLines.map(l => ({ line:l, over_pct:overPct(yL,l), under_pct:100-overPct(yL,l) })),
     },
+    cards_ht: htCount > 0 ? {
+      avg: +(htYellows / htCount).toFixed(1),
+      matches: htCount,
+      rec_line: conservativeRecLine(htYellows / htCount, htCardLines),
+      lines: htCardLines.map(l => ({ line:l, over_pct:overPct(htYL,l), under_pct:100-overPct(htYL,l) })),
+    } : null,
     offsides: {
       avg: avgO,
       rec_line: conservativeRecLine(avgO, offsidesLines),
-      lines: offsidesLines.map(l => ({ line: l, over_pct: overPct(oL, l), under_pct: 100 - overPct(oL, l) })),
+      lines: offsidesLines.map(l => ({ line:l, over_pct:overPct(oL,l), under_pct:100-overPct(oL,l) })),
     },
   };
 }
@@ -651,7 +711,7 @@ export default async function handler(req, res) {
       ...(awayStats?.finishedIds || []),
     ].filter((v, i, a) => a.indexOf(v) === i).slice(0, 10);
 
-    const histStats = await fetchHistoricalStats(allFinishedIds);
+    const histStats = await fetchHistoricalStats(allFinishedIds, event.home_team_id, event.away_team_id);
 
     // Phase 4 — player threat analysis (uses lineup + historical player-stats)
     const homePlayers = lineups?.lineups?.home?.players || [];
